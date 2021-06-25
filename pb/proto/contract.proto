@@ -41,3 +41,9 @@ message Response {
     // A payload that can be used to include metadata with this response.
     bytes payload = 3;
 }
+
+message Input {
+    map<string, string> args = 1;
+
+    bool isInit = 2;
+}

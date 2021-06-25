@@ -5,6 +5,7 @@ import (
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim"
 	"fmt"
 	"log"
+	"strconv"
 )
 
 type TestContract struct {
@@ -19,7 +20,18 @@ func (t *TestContract) Init(stub shim.CMStubInterface) protogo.Response {
 func (t *TestContract) Invoke(stub shim.CMStubInterface) protogo.Response {
 	fmt.Println("sandbox - invoke has been invoke")
 
-	return shim.Success([]byte("Invoke Success"))
+	args := stub.GetArgs()
+
+	a, _ := strconv.Atoi(args["arg1"])
+	b, _ := strconv.Atoi(args["arg2"])
+
+	c := a + b
+
+	strc := strconv.Itoa(c)
+
+	fmt.Println(c)
+
+	return shim.Success([]byte(strc))
 
 }
 

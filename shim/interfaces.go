@@ -9,11 +9,7 @@ type CMContract interface {
 }
 
 type CMStubInterface interface {
-	GetArgs() [][]byte
-
-	GetStringArgs() []string
-
-	GetFunctionAndParameters() (string, []string)
+	GetArgs() map[string]string
 
 	GetState(key string) ([]byte, error)
 

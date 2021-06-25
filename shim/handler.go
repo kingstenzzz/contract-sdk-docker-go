@@ -128,7 +128,7 @@ func (h *Handler) handleInit(readyMsg *protogo.ContractMessage, finishCh chan bo
 
 	// deal with parameters
 
-	stub := NewCMStub(h)
+	stub := NewCMStub(h, nil)
 	result := h.cmContract.Init(stub)
 
 	resultPayload, err := proto.Marshal(&result)
@@ -156,7 +156,14 @@ func (h *Handler) handleInvoke(readyMsg *protogo.ContractMessage, finishCh chan 
 	// deal with parameters
 	fmt.Println("in handle Invoke")
 
-	stub := NewCMStub(h)
+	// get input map
+
+	var input protogo.Input
+	err := proto.UnmarshalMerge(readyMsg.Payload, &input)
+
+	args := input.Args
+
+	stub := NewCMStub(h, args)
 	result := h.cmContract.Invoke(stub)
 
 	resultPayload, err := proto.Marshal(&result)

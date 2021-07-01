@@ -1,20 +1,23 @@
 package shim
 
 import (
+	"chainmaker.org/chainmaker-contract-sdk-docker-go/logger"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim/internal"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"io"
 	"os"
 )
+
+var Logger *zap.SugaredLogger
 
 func GetClientStream(sockAddress string) (ClientStream, error) {
 
 	// establish the connection
 	conn, err := internal.NewClientConn(sockAddress)
 	if err != nil {
-		fmt.Println(10)
 		return nil, err
 	}
 
@@ -23,28 +26,27 @@ func GetClientStream(sockAddress string) (ClientStream, error) {
 
 func Start(cmContract CMContract) error {
 
-	//flag.Parse()
-	// passing sock address when initial the contract
+	Logger = logger.NewDockerLogger("[Sandbox]")
 
+	// passing sock address when initial the contract
 	sockAddress := os.Args[0]
 	handlerName := os.Args[1]
-	fmt.Println("sandbox - get address: ", sockAddress)
-	fmt.Println("sandbox - get handler name: ", handlerName)
+
+	Logger.Debugf("sandbox - get address: %s", sockAddress)
+	Logger.Debugf("sandbox - get handler name: %s", handlerName)
 
 	// get sandbox stream
 	stream, err := GetClientStream(sockAddress)
 	if err != nil {
-		fmt.Println(3)
 		return err
 	}
 
 	err = startClientChat(stream, cmContract, handlerName)
 	if err != nil {
-		fmt.Println(4)
 		return err
 	}
 	// wait to end
-	fmt.Println("sandbox - end ... ")
+	Logger.Debugf("sandbox - end ...")
 	err = stream.CloseSend()
 	if err != nil {
 		return err
@@ -58,7 +60,7 @@ func startClientChat(stream ClientStream, contract CMContract, handlerName strin
 }
 
 func chatWithManager(stream ClientStream, contract CMContract, handlerName string) error {
-	fmt.Println("sandbox - chat with manager")
+	Logger.Debugf("sandbox - chat with manager")
 	// Create the shim handler responsible for all control logic
 	handler := newChaincodeHandler(stream, contract, handlerName)
 
@@ -94,7 +96,7 @@ func chatWithManager(stream ClientStream, contract CMContract, handlerName strin
 		case rmsg := <-msgAvail:
 			switch {
 			case rmsg.err == io.EOF:
-				fmt.Println("server closed")
+				Logger.Debugf("server closed")
 				return errors.New("received EOF, ending chaincode stream")
 			case rmsg.err != nil:
 				err := fmt.Errorf("receive failed: %s", rmsg.err)
@@ -119,7 +121,7 @@ func chatWithManager(stream ClientStream, contract CMContract, handlerName strin
 			}
 
 		case <-fCh:
-			fmt.Println("sandbox - finished")
+			Logger.Debugf("sandbox - finished")
 			close(msgAvail)
 			close(fCh)
 			close(errc)

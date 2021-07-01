@@ -3,6 +3,8 @@ package shim
 import (
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"fmt"
+
+	//"fmt"
 	"github.com/golang/protobuf/proto"
 	"sync"
 )
@@ -54,7 +56,7 @@ func (h *Handler) SendMessage(msg *protogo.ContractMessage) error {
 	h.serialLock.Lock()
 	defer h.serialLock.Unlock()
 
-	fmt.Println("sandbox - send message: ", msg)
+	Logger.Debugf("sandbox - send message: [%v]", msg)
 
 	return h.contactStream.Send(msg)
 }
@@ -62,7 +64,7 @@ func (h *Handler) SendMessage(msg *protogo.ContractMessage) error {
 // handleMessage message handles loop for shim side of chaincode/peer stream.
 func (h *Handler) handleMessage(msg *protogo.ContractMessage, errc chan error, finishCh chan bool) error {
 
-	fmt.Println("sandbox - handle message: ", msg)
+	Logger.Debugf("sandbox - handle message: [%v]", msg)
 	var err error
 
 	switch h.state {
@@ -151,7 +153,7 @@ func (h *Handler) handleInit(readyMsg *protogo.ContractMessage, finishCh chan bo
 func (h *Handler) handleInvoke(readyMsg *protogo.ContractMessage, finishCh chan bool) error {
 
 	// deal with parameters
-	fmt.Println("in handle Invoke")
+	//fmt.Println("in handle Invoke")
 
 	// get input map
 

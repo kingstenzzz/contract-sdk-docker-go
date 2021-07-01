@@ -27,42 +27,50 @@ func Start(cmContract CMContract) error {
 	// passing sock address when initial the contract
 
 	sockAddress := os.Args[0]
+	handlerName := os.Args[1]
 	fmt.Println("sandbox - get address: ", sockAddress)
+	fmt.Println("sandbox - get handler name: ", handlerName)
 
 	// get sandbox stream
-	// todo change to uds
 	stream, err := GetClientStream(sockAddress)
 	if err != nil {
 		fmt.Println(3)
 		return err
 	}
 
-	err = startClientChat(stream, cmContract)
+	err = startClientChat(stream, cmContract, handlerName)
 	if err != nil {
 		fmt.Println(4)
 		return err
 	}
 	// wait to end
 	fmt.Println("sandbox - end ... ")
+	err = stream.CloseSend()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func startClientChat(stream ClientStream, contract CMContract) error {
-	defer stream.CloseSend()
+func startClientChat(stream ClientStream, contract CMContract, handlerName string) error {
 
-	return chatWithManager(stream, contract)
+	return chatWithManager(stream, contract, handlerName)
 }
 
-func chatWithManager(stream ClientStream, contract CMContract) error {
+func chatWithManager(stream ClientStream, contract CMContract, handlerName string) error {
 	fmt.Println("sandbox - chat with manager")
 	// Create the shim handler responsible for all control logic
-	handler := newChaincodeHandler(stream, contract)
+	handler := newChaincodeHandler(stream, contract, handlerName)
 
 	// Send the register
 	payloadString := "first register"
 	payload := []byte(payloadString)
 
-	if err := handler.SendMessage(&protogo.ContractMessage{Type: protogo.Type_REGISTER, Payload: payload}); err != nil {
+	if err := handler.SendMessage(&protogo.ContractMessage{
+		Type:        protogo.Type_REGISTER,
+		Payload:     payload,
+		HandlerName: handlerName,
+	}); err != nil {
 		return fmt.Errorf("error sending chaincode REGISTER: %s", err)
 	}
 
@@ -112,6 +120,9 @@ func chatWithManager(stream ClientStream, contract CMContract) error {
 
 		case <-fCh:
 			fmt.Println("sandbox - finished")
+			close(msgAvail)
+			close(fCh)
+			close(errc)
 			return nil
 		}
 

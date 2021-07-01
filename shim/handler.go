@@ -17,34 +17,35 @@ const (
 	ready state = "ready"
 )
 
-type ChainCodeStream interface {
+type ContactStream interface {
 	Send(*protogo.ContractMessage) error
 	Recv() (*protogo.ContractMessage, error)
 }
 
 type ClientStream interface {
-	ChainCodeStream
+	ContactStream
 	CloseSend() error
 }
 
 type Handler struct {
 	serialLock sync.Mutex
 
-	chaincodeStream ChainCodeStream
+	contactStream ContactStream
 
 	cmContract CMContract
 
 	state state
 
-	contractName string
+	handlerName string
 }
 
 // NewChaincodeHandler returns a new instance of the shim side handler.
-func newChaincodeHandler(chaincodeStream ChainCodeStream, cmContract CMContract) *Handler {
+func newChaincodeHandler(chaincodeStream ContactStream, cmContract CMContract, handlerName string) *Handler {
 	return &Handler{
-		chaincodeStream: chaincodeStream,
-		cmContract:      cmContract,
-		state:           created,
+		contactStream: chaincodeStream,
+		cmContract:    cmContract,
+		state:         created,
+		handlerName:   handlerName,
 	}
 }
 
@@ -55,7 +56,7 @@ func (h *Handler) SendMessage(msg *protogo.ContractMessage) error {
 
 	fmt.Println("sandbox - send message: ", msg)
 
-	return h.chaincodeStream.Send(msg)
+	return h.contactStream.Send(msg)
 }
 
 // handleMessage message handles loop for shim side of chaincode/peer stream.
@@ -76,7 +77,7 @@ func (h *Handler) handleMessage(msg *protogo.ContractMessage, errc chan error, f
 	}
 	if err != nil {
 		payload := []byte(err.Error())
-		errorMsg := &protogo.ContractMessage{Type: protogo.Type_ERROR, Payload: payload, ContractName: msg.ContractName}
+		errorMsg := &protogo.ContractMessage{Type: protogo.Type_ERROR, Payload: payload, HandlerName: h.handlerName}
 		h.SendMessage(errorMsg)
 		return err
 	}
@@ -86,16 +87,15 @@ func (h *Handler) handleMessage(msg *protogo.ContractMessage, errc chan error, f
 
 func (h *Handler) handleCreated(registeredMsg *protogo.ContractMessage) error {
 	if registeredMsg.Type != protogo.Type_REGISTERED {
-		return fmt.Errorf("sandbox - contract [%s] handler cannot handle message (%s) while in state: %s", registeredMsg.ContractName, registeredMsg.Type, h.state)
+		return fmt.Errorf("sandbox - handler [%s] cannot handle message (%s) while in state: %s", registeredMsg.HandlerName, registeredMsg.Type, h.state)
 	}
 	h.state = prepare
-	h.contractName = registeredMsg.ContractName
 	return nil
 }
 
 func (h *Handler) handlePrepare(prepareMsg *protogo.ContractMessage) error {
 	if prepareMsg.Type != protogo.Type_PREPARE {
-		return fmt.Errorf("sandbox - contract [%s] handler cannot handle message (%s) while in state: %s", prepareMsg.ContractName, prepareMsg.Type, h.state)
+		return fmt.Errorf("sandbox - handler [%s] cannot handle message (%s) while in state: %s", prepareMsg.HandlerName, prepareMsg.Type, h.state)
 	}
 	h.state = prepare
 
@@ -104,9 +104,9 @@ func (h *Handler) handlePrepare(prepareMsg *protogo.ContractMessage) error {
 
 func (h *Handler) afterPrepare() error {
 	readyMsg := &protogo.ContractMessage{
-		Type:         protogo.Type_READY,
-		ContractName: h.contractName,
-		Payload:      nil,
+		Type:        protogo.Type_READY,
+		HandlerName: h.handlerName,
+		Payload:     nil,
 	}
 	h.state = ready
 	return h.SendMessage(readyMsg)
@@ -120,6 +120,8 @@ func (h *Handler) handleReady(readyMsg *protogo.ContractMessage, finishCh chan b
 		return h.handleInvoke(readyMsg, finishCh)
 	case protogo.Type_RESPONSE:
 		return h.handleResponse(readyMsg)
+	case protogo.Type_COMPLETED:
+		return h.handleCompleted(finishCh)
 	}
 	return nil
 }
@@ -137,17 +139,12 @@ func (h *Handler) handleInit(readyMsg *protogo.ContractMessage, finishCh chan bo
 	}
 
 	completedMsg := &protogo.ContractMessage{
-		Type:         protogo.Type_COMPLETED,
-		ContractName: h.contractName,
-		Payload:      resultPayload,
+		Type:        protogo.Type_COMPLETED,
+		HandlerName: h.handlerName,
+		Payload:     resultPayload,
 	}
 
-	err = h.SendMessage(completedMsg)
-	if err != nil {
-		return err
-	}
-
-	return h.afterCompleted(finishCh)
+	return h.SendMessage(completedMsg)
 
 }
 
@@ -172,17 +169,12 @@ func (h *Handler) handleInvoke(readyMsg *protogo.ContractMessage, finishCh chan 
 	}
 
 	completedMsg := &protogo.ContractMessage{
-		Type:         protogo.Type_COMPLETED,
-		ContractName: h.contractName,
-		Payload:      resultPayload,
+		Type:        protogo.Type_COMPLETED,
+		HandlerName: h.handlerName,
+		Payload:     resultPayload,
 	}
 
-	err = h.SendMessage(completedMsg)
-	if err != nil {
-		return err
-	}
-
-	return h.afterCompleted(finishCh)
+	return h.SendMessage(completedMsg)
 
 }
 
@@ -191,7 +183,7 @@ func (h *Handler) handleResponse(readyMsg *protogo.ContractMessage) error {
 	return nil
 }
 
-func (h *Handler) afterCompleted(finishCh chan bool) error {
-	//finishCh <- true
+func (h *Handler) handleCompleted(finishCh chan bool) error {
+	finishCh <- true
 	return nil
 }

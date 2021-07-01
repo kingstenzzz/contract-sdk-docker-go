@@ -6,13 +6,13 @@ option go_package = "contract-sdk-test1/pb/protogo";
 
 // manager as server - sandbox established a connection to the manager
 service Contract {
-    rpc Connect(stream ContractMessage) returns (stream ContractMessage);
+    rpc Contact(stream ContractMessage) returns (stream ContractMessage);
 }
 
 message ContractMessage {
     Type type = 1;
 
-    string contract_name = 2;
+    string handler_name = 2;
 
     bytes payload = 3;
 }

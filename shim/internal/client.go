@@ -36,6 +36,7 @@ func NewClientConn(sockAddress string) (*grpc.ClientConn, error) {
 	return grpc.DialContext(ctx, sockAddress, dialOpts...)
 }
 
-func NewContractClient(conn *grpc.ClientConn) (protogo.Contract_ConnectClient, error) {
-	return protogo.NewContractClient(conn).Connect(context.Background())
+func NewContractClient(conn *grpc.ClientConn) (protogo.Contract_ContactClient, error) {
+
+	return protogo.NewContractClient(conn).Contact(context.Background())
 }

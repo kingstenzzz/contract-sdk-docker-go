@@ -3,8 +3,6 @@ package shim
 import (
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"fmt"
-
-	//"fmt"
 	"github.com/golang/protobuf/proto"
 	"sync"
 )
@@ -14,14 +12,12 @@ type state string
 const (
 	created state = "created"
 
-	prepare state = "prepare"
-
 	ready state = "ready"
 )
 
 type ContactStream interface {
-	Send(*protogo.ContractMessage) error
-	Recv() (*protogo.ContractMessage, error)
+	Send(message *protogo.DMSMessage) error
+	Recv() (*protogo.DMSMessage, error)
 }
 
 type ClientStream interface {
@@ -33,26 +29,28 @@ type Handler struct {
 	serialLock sync.Mutex
 
 	contactStream ContactStream
+	cmContract    CMContract
+	state         state
 
-	cmContract CMContract
-
-	state state
-
-	handlerName string
+	handlerName  string
+	contractName string
+	responseCh   chan []byte
 }
 
 // NewChaincodeHandler returns a new instance of the shim side handler.
-func newChaincodeHandler(chaincodeStream ContactStream, cmContract CMContract, handlerName string) *Handler {
+func newHandler(chaincodeStream ContactStream, cmContract CMContract, handlerName, contractName string) *Handler {
 	return &Handler{
 		contactStream: chaincodeStream,
 		cmContract:    cmContract,
 		state:         created,
 		handlerName:   handlerName,
+		contractName:  contractName,
+		responseCh:    nil,
 	}
 }
 
 // SendMessage Send on the gRPC client.
-func (h *Handler) SendMessage(msg *protogo.ContractMessage) error {
+func (h *Handler) SendMessage(msg *protogo.DMSMessage) error {
 	h.serialLock.Lock()
 	defer h.serialLock.Unlock()
 
@@ -62,7 +60,7 @@ func (h *Handler) SendMessage(msg *protogo.ContractMessage) error {
 }
 
 // handleMessage message handles loop for shim side of chaincode/peer stream.
-func (h *Handler) handleMessage(msg *protogo.ContractMessage, errc chan error, finishCh chan bool) error {
+func (h *Handler) handleMessage(msg *protogo.DMSMessage, finishCh chan bool) error {
 
 	Logger.Debugf("sandbox - handle message: [%v]", msg)
 	var err error
@@ -70,118 +68,143 @@ func (h *Handler) handleMessage(msg *protogo.ContractMessage, errc chan error, f
 	switch h.state {
 	case created:
 		err = h.handleCreated(msg)
-	case prepare:
-		err = h.handlePrepare(msg)
 	case ready:
 		err = h.handleReady(msg, finishCh)
 	default:
 		panic(fmt.Sprintf("invalid handler state: %s", h.state))
 	}
 	if err != nil {
-		payload := []byte(err.Error())
-		errorMsg := &protogo.ContractMessage{Type: protogo.Type_ERROR, Payload: payload, HandlerName: h.handlerName}
-		h.SendMessage(errorMsg)
 		return err
 	}
 
 	return nil
 }
 
-func (h *Handler) handleCreated(registeredMsg *protogo.ContractMessage) error {
-	if registeredMsg.Type != protogo.Type_REGISTERED {
-		return fmt.Errorf("sandbox - handler [%s] cannot handle message (%s) while in state: %s", registeredMsg.HandlerName, registeredMsg.Type, h.state)
-	}
-	h.state = prepare
-	return nil
-}
+// ------------------------------------------
 
-func (h *Handler) handlePrepare(prepareMsg *protogo.ContractMessage) error {
-	if prepareMsg.Type != protogo.Type_PREPARE {
-		return fmt.Errorf("sandbox - handler [%s] cannot handle message (%s) while in state: %s", prepareMsg.HandlerName, prepareMsg.Type, h.state)
-	}
-	h.state = prepare
-
-	return h.afterPrepare()
-}
-
-func (h *Handler) afterPrepare() error {
-	readyMsg := &protogo.ContractMessage{
-		Type:        protogo.Type_READY,
-		HandlerName: h.handlerName,
-		Payload:     nil,
+// receive registered
+func (h *Handler) handleCreated(registeredMsg *protogo.DMSMessage) error {
+	if registeredMsg.Type != protogo.DMSMessageType_DMS_MESSAGE_TYPE_REGISTERED {
+		return fmt.Errorf("sandbox - handler [%s] cannot handle message (%s) while in state: %s", h.handlerName, registeredMsg.Type, h.state)
 	}
 	h.state = ready
+	return h.afterCreated()
+}
+
+func (h *Handler) afterCreated() error {
+	readyMsg := &protogo.DMSMessage{
+		Type:         protogo.DMSMessageType_DMS_MESSAGE_TYPE_READY,
+		ContractName: h.contractName,
+		Payload:      nil,
+	}
 	return h.SendMessage(readyMsg)
 }
 
-func (h *Handler) handleReady(readyMsg *protogo.ContractMessage, finishCh chan bool) error {
+// ------------------------------------------
+
+func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) error {
 	switch readyMsg.Type {
-	case protogo.Type_INIT:
-		return h.handleInit(readyMsg, finishCh)
-	case protogo.Type_INVOKE:
-		return h.handleInvoke(readyMsg, finishCh)
-	case protogo.Type_RESPONSE:
+	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_INIT:
+		return h.handleInit(readyMsg)
+	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_INVOKE:
+		return h.handleInvoke(readyMsg)
+	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_RESPONSE:
 		return h.handleResponse(readyMsg)
-	case protogo.Type_COMPLETED:
+	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED:
 		return h.handleCompleted(finishCh)
 	}
 	return nil
 }
 
-func (h *Handler) handleInit(readyMsg *protogo.ContractMessage, finishCh chan bool) error {
+func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 
 	// deal with parameters
-
-	stub := NewCMStub(h, nil)
-	result := h.cmContract.Init(stub)
-
-	resultPayload, err := proto.Marshal(&result)
-	if err != nil {
-		return err
-	}
-
-	completedMsg := &protogo.ContractMessage{
-		Type:        protogo.Type_COMPLETED,
-		HandlerName: h.handlerName,
-		Payload:     resultPayload,
-	}
-
-	return h.SendMessage(completedMsg)
-
-}
-
-func (h *Handler) handleInvoke(readyMsg *protogo.ContractMessage, finishCh chan bool) error {
-
-	// deal with parameters
-	//fmt.Println("in handle Invoke")
-
-	// get input map
-
 	var input protogo.Input
 	err := proto.UnmarshalMerge(readyMsg.Payload, &input)
-
-	args := input.Args
-
-	stub := NewCMStub(h, args)
-	result := h.cmContract.Invoke(stub)
-
-	resultPayload, err := proto.Marshal(&result)
 	if err != nil {
 		return err
 	}
 
-	completedMsg := &protogo.ContractMessage{
-		Type:        protogo.Type_COMPLETED,
-		HandlerName: h.handlerName,
-		Payload:     resultPayload,
+	var args map[string]string
+	if input.IsInit {
+		args = input.Args
+	} else {
+		args = nil
+	}
+
+	stub := NewCMStub(h, args, h.contractName)
+
+	// get result
+	response := h.cmContract.InitContract(stub)
+
+	// construct complete message
+	writeMap := stub.GetWriteMap()
+	responseWithWriteMap := &protogo.ResponseWithWriteMap{
+		Response: &response,
+		WriteMap: writeMap,
+	}
+
+	responseWithWriteMapPayload, err := proto.Marshal(responseWithWriteMap)
+	if err != nil {
+		return err
+	}
+	completedMsg := &protogo.DMSMessage{
+		Type:    protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED,
+		Payload: responseWithWriteMapPayload,
 	}
 
 	return h.SendMessage(completedMsg)
 
 }
 
-func (h *Handler) handleResponse(readyMsg *protogo.ContractMessage) error {
-	// handle get_state result
+func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
+	// deal with parameters
+	var input protogo.Input
+	err := proto.UnmarshalMerge(readyMsg.Payload, &input)
+	args := input.Args
+
+	stub := NewCMStub(h, args, h.contractName)
+
+	response := h.cmContract.InvokeContract(stub)
+
+	// construct complete message
+	writeMap := stub.GetWriteMap()
+	responseWithWriteMap := &protogo.ResponseWithWriteMap{
+		Response: &response,
+		WriteMap: writeMap,
+	}
+
+	// construct complete message
+	responseWithWriteMapPayload, err := proto.Marshal(responseWithWriteMap)
+	if err != nil {
+		return err
+	}
+
+	completedMsg := &protogo.DMSMessage{
+		Type:    protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED,
+		Payload: responseWithWriteMapPayload,
+	}
+
+	return h.SendMessage(completedMsg)
+
+}
+
+func (h *Handler) SendGetStateReq(key string, responseCh chan []byte) error {
+	getStateMsg := &protogo.DMSMessage{
+		Type:         protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE,
+		ContractName: h.contractName,
+		Payload:      []byte(key),
+	}
+
+	h.responseCh = responseCh
+
+	return h.SendMessage(getStateMsg)
+}
+
+func (h *Handler) handleResponse(readyMsg *protogo.DMSMessage) error {
+	h.responseCh <- readyMsg.Payload
+	close(h.responseCh)
+
 	return nil
 }
 

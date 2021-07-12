@@ -11,28 +11,42 @@ import (
 type TestContract struct {
 }
 
-func (t *TestContract) Init(stub shim.CMStubInterface) protogo.Response {
-	//fmt.Println("sandbox - init has been invoke")
+func (t *TestContract) InitContract(stub shim.CMStubInterface) protogo.Response {
+
+	err := stub.PutState([]byte("key1"), []byte("string_key1"))
+	if err != nil {
+		return shim.Error("err to put state")
+	}
 
 	return shim.Success([]byte("Init Success"))
 }
 
-func (t *TestContract) Invoke(stub shim.CMStubInterface) protogo.Response {
-	//fmt.Println("sandbox - invoke has been invoke")
+func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Response {
+
+	args := stub.GetArgs()
+	methodName := args["arg0"]
+	if methodName == "sum" {
+		return t.Sum(stub)
+	}
+
+	return shim.Error("unknown method")
+}
+
+func (t *TestContract) Sum(stub shim.CMStubInterface) protogo.Response {
 
 	args := stub.GetArgs()
 
 	a, _ := strconv.Atoi(args["arg1"])
 	b, _ := strconv.Atoi(args["arg2"])
 
+	key1Value, _ := stub.GetState([]byte("key1"))
+	fmt.Println(string(key1Value))
+
 	c := a + b
 
 	strc := strconv.Itoa(c)
 
-	//fmt.Println(c)
-
 	return shim.Success([]byte(strc))
-
 }
 
 func main() {

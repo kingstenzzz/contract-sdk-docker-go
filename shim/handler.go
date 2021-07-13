@@ -105,9 +105,19 @@ func (h *Handler) afterCreated() error {
 func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) error {
 	switch readyMsg.Type {
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_INIT:
-		return h.handleInit(readyMsg)
+		go func() {
+			err := h.handleInit(readyMsg)
+			if err != nil {
+				Logger.Debugf("fail to handle init")
+			}
+		}()
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_INVOKE:
-		return h.handleInvoke(readyMsg)
+		go func() {
+			err := h.handleInvoke(readyMsg)
+			if err != nil {
+				Logger.Debugf("fail to handle invoke")
+			}
+		}()
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_RESPONSE:
 		return h.handleResponse(readyMsg)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED:
@@ -189,11 +199,11 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 
 }
 
-func (h *Handler) SendGetStateReq(key string, responseCh chan []byte) error {
+func (h *Handler) SendGetStateReq(key []byte, responseCh chan []byte) error {
 	getStateMsg := &protogo.DMSMessage{
 		Type:         protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE,
 		ContractName: h.contractName,
-		Payload:      []byte(key),
+		Payload:      key,
 	}
 
 	h.responseCh = responseCh
@@ -204,6 +214,7 @@ func (h *Handler) SendGetStateReq(key string, responseCh chan []byte) error {
 func (h *Handler) handleResponse(readyMsg *protogo.DMSMessage) error {
 	h.responseCh <- readyMsg.Payload
 	close(h.responseCh)
+	h.responseCh = nil
 
 	return nil
 }

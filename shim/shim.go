@@ -89,6 +89,8 @@ func chatWithManager(stream ClientStream, userContract CMContract, handlerName, 
 		msgAvail <- &recvMsg{in, err}
 	}
 
+	// todo: change two goroutines, make recev and send different
+	// finish condition: receive completed message
 	go receiveMessage()
 	for {
 		select {
@@ -98,6 +100,7 @@ func chatWithManager(stream ClientStream, userContract CMContract, handlerName, 
 				Logger.Debugf("server closed")
 				return errors.New("received EOF, ending chaincode stream")
 			case rmsg.err != nil:
+				Logger.Debugf("receive err: [%s]", rmsg.err)
 				err := fmt.Errorf("receive failed: %s", rmsg.err)
 				return err
 			case rmsg.msg == nil:

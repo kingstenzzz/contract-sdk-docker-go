@@ -13,7 +13,7 @@ type TestContract struct {
 
 func (t *TestContract) InitContract(stub shim.CMStubInterface) protogo.Response {
 
-	err := stub.PutState([]byte("key1"), []byte("string_key1"))
+	err := stub.PutState([]byte("key1"), []byte("5"))
 	if err != nil {
 		return shim.Error("err to put state")
 	}
@@ -41,8 +41,9 @@ func (t *TestContract) Sum(stub shim.CMStubInterface) protogo.Response {
 
 	key1Value, _ := stub.GetState([]byte("key1"))
 	fmt.Println(string(key1Value))
+	key1Int, _ := strconv.Atoi(string(key1Value))
 
-	c := a + b
+	c := a + b + key1Int
 
 	strc := strconv.Itoa(c)
 

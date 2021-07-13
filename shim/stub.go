@@ -1,7 +1,6 @@
 package shim
 
 import (
-	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"fmt"
 )
 
@@ -15,8 +14,8 @@ type CMStub struct {
 	contractName string
 
 	// simContext
-	readMap  map[string]*protogo.TxRead
-	writeMap map[string]*protogo.TxWrite
+	readMap  map[string][]byte
+	writeMap map[string][]byte
 }
 
 func NewCMStub(handler *Handler, args map[string]string, contractName string) *CMStub {
@@ -25,8 +24,8 @@ func NewCMStub(handler *Handler, args map[string]string, contractName string) *C
 		args:         args,
 		Handler:      handler,
 		contractName: contractName,
-		readMap:      make(map[string]*protogo.TxRead, MapSize),
-		writeMap:     make(map[string]*protogo.TxWrite, MapSize),
+		readMap:      make(map[string][]byte, MapSize),
+		writeMap:     make(map[string][]byte, MapSize),
 	}
 
 	return stub
@@ -37,7 +36,7 @@ func (s *CMStub) GetArgs() map[string]string {
 }
 
 func (s *CMStub) GetState(key []byte) ([]byte, error) {
-
+	Logger.Debugf("get state for [%s]", string(key))
 	// get from write set
 	if value, done := s.getFromWriteSet(key); done {
 		s.putIntoWriteSet(key, value)
@@ -52,8 +51,8 @@ func (s *CMStub) GetState(key []byte) ([]byte, error) {
 	// get from chain maker
 	responseCh := make(chan []byte, 1)
 
-	getStateKey := s.constructKey(s.contractName, key)
-	_ = s.Handler.SendGetStateReq(getStateKey, responseCh)
+	//getStateKey := s.constructKey(s.contractName, key)
+	_ = s.Handler.SendGetStateReq(key, responseCh)
 
 	value := <-responseCh
 	if len(value) > 0 {
@@ -75,40 +74,35 @@ func (s *CMStub) DelState(key []byte) error {
 }
 
 func (s *CMStub) putIntoWriteSet(key []byte, value []byte) {
-	s.writeMap[s.constructKey(s.contractName, key)] = &protogo.TxWrite{
-		Key:          key,
-		Value:        value,
-		ContractName: s.contractName,
-	}
+	s.writeMap[string(key)] = value
+	Logger.Debugf("put key[%s] - value[%s] into write set\n", string(key), string(value))
 }
 
 func (s *CMStub) getFromWriteSet(key []byte) ([]byte, bool) {
-	if txWrite, ok := s.writeMap[s.constructKey(s.contractName, key)]; ok {
-		return txWrite.Value, true
+	Logger.Debugf("get key[%s] from write set\n", string(key))
+	if txWrite, ok := s.writeMap[string(key)]; ok {
+		return txWrite, true
 	}
 	return nil, false
 }
 
 func (s *CMStub) getFromReadSet(key []byte) ([]byte, bool) {
-	if txRead, ok := s.readMap[s.constructKey(s.contractName, key)]; ok {
-		return txRead.Value, true
+	Logger.Debugf("get key[%s] from read set\n", string(key))
+	if txRead, ok := s.readMap[string(key)]; ok {
+		return txRead, true
 	}
 	return nil, false
 }
 
 func (s *CMStub) putIntoReadSet(key []byte, value []byte) {
-	s.readMap[s.constructKey(s.contractName, key)] = &protogo.TxRead{
-		Key:          key,
-		Value:        value,
-		ContractName: s.contractName,
-		Version:      nil,
-	}
+	s.readMap[string(key)] = value
+	Logger.Debugf("put key[%s] - value[%s] into read set\n", string(key), string(value))
 }
 
 func (s *CMStub) constructKey(contractName string, key []byte) string {
 	return contractName + string(key)
 }
 
-func (s *CMStub) GetWriteMap() map[string]*protogo.TxWrite {
+func (s *CMStub) GetWriteMap() map[string][]byte {
 	return s.writeMap
 }

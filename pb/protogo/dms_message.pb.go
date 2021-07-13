@@ -255,8 +255,8 @@ func (m *Input) GetIsInit() bool {
 
 // completed message
 type ResponseWithWriteMap struct {
-	Response *Response           `protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"`
-	WriteMap map[string]*TxWrite `protobuf:"bytes,2,rep,name=write_map,json=writeMap,proto3" json:"write_map,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Response *Response         `protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"`
+	WriteMap map[string][]byte `protobuf:"bytes,2,rep,name=write_map,json=writeMap,proto3" json:"write_map,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *ResponseWithWriteMap) Reset()         { *m = ResponseWithWriteMap{} }
@@ -299,205 +299,11 @@ func (m *ResponseWithWriteMap) GetResponse() *Response {
 	return nil
 }
 
-func (m *ResponseWithWriteMap) GetWriteMap() map[string]*TxWrite {
+func (m *ResponseWithWriteMap) GetWriteMap() map[string][]byte {
 	if m != nil {
 		return m.WriteMap
 	}
 	return nil
-}
-
-// key read version
-type KeyVersion struct {
-	// the transaction identifier that last modified the key
-	RefTxId string `protobuf:"bytes,3,opt,name=ref_tx_id,json=refTxId,proto3" json:"ref_tx_id,omitempty"`
-	// the offset of the key in the write set of the transaction, starts from 0
-	RefOffset int32 `protobuf:"varint,4,opt,name=ref_offset,json=refOffset,proto3" json:"ref_offset,omitempty"`
-}
-
-func (m *KeyVersion) Reset()         { *m = KeyVersion{} }
-func (m *KeyVersion) String() string { return proto.CompactTextString(m) }
-func (*KeyVersion) ProtoMessage()    {}
-func (*KeyVersion) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9f090dc9f7ea29b6, []int{4}
-}
-func (m *KeyVersion) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *KeyVersion) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_KeyVersion.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *KeyVersion) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_KeyVersion.Merge(m, src)
-}
-func (m *KeyVersion) XXX_Size() int {
-	return m.Size()
-}
-func (m *KeyVersion) XXX_DiscardUnknown() {
-	xxx_messageInfo_KeyVersion.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_KeyVersion proto.InternalMessageInfo
-
-func (m *KeyVersion) GetRefTxId() string {
-	if m != nil {
-		return m.RefTxId
-	}
-	return ""
-}
-
-func (m *KeyVersion) GetRefOffset() int32 {
-	if m != nil {
-		return m.RefOffset
-	}
-	return 0
-}
-
-// TxRead describes a read operation on a key
-type TxRead struct {
-	// read key
-	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// the value of the key
-	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	// contract name, used in cross-contract calls
-	// set to null if only the contract in transaction request is called
-	ContractName string `protobuf:"bytes,3,opt,name=contract_name,json=contractName,proto3" json:"contract_name,omitempty"`
-	// read key version
-	Version *KeyVersion `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
-}
-
-func (m *TxRead) Reset()         { *m = TxRead{} }
-func (m *TxRead) String() string { return proto.CompactTextString(m) }
-func (*TxRead) ProtoMessage()    {}
-func (*TxRead) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9f090dc9f7ea29b6, []int{5}
-}
-func (m *TxRead) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *TxRead) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_TxRead.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *TxRead) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_TxRead.Merge(m, src)
-}
-func (m *TxRead) XXX_Size() int {
-	return m.Size()
-}
-func (m *TxRead) XXX_DiscardUnknown() {
-	xxx_messageInfo_TxRead.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_TxRead proto.InternalMessageInfo
-
-func (m *TxRead) GetKey() []byte {
-	if m != nil {
-		return m.Key
-	}
-	return nil
-}
-
-func (m *TxRead) GetValue() []byte {
-	if m != nil {
-		return m.Value
-	}
-	return nil
-}
-
-func (m *TxRead) GetContractName() string {
-	if m != nil {
-		return m.ContractName
-	}
-	return ""
-}
-
-func (m *TxRead) GetVersion() *KeyVersion {
-	if m != nil {
-		return m.Version
-	}
-	return nil
-}
-
-// TxRead describes a write/delete operation on a key
-type TxWrite struct {
-	// write key
-	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// write value
-	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	// contract name, used in cross-contract calls
-	// set to null if only the contract in transaction request is called
-	ContractName string `protobuf:"bytes,3,opt,name=contract_name,json=contractName,proto3" json:"contract_name,omitempty"`
-}
-
-func (m *TxWrite) Reset()         { *m = TxWrite{} }
-func (m *TxWrite) String() string { return proto.CompactTextString(m) }
-func (*TxWrite) ProtoMessage()    {}
-func (*TxWrite) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9f090dc9f7ea29b6, []int{6}
-}
-func (m *TxWrite) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *TxWrite) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_TxWrite.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *TxWrite) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_TxWrite.Merge(m, src)
-}
-func (m *TxWrite) XXX_Size() int {
-	return m.Size()
-}
-func (m *TxWrite) XXX_DiscardUnknown() {
-	xxx_messageInfo_TxWrite.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_TxWrite proto.InternalMessageInfo
-
-func (m *TxWrite) GetKey() []byte {
-	if m != nil {
-		return m.Key
-	}
-	return nil
-}
-
-func (m *TxWrite) GetValue() []byte {
-	if m != nil {
-		return m.Value
-	}
-	return nil
-}
-
-func (m *TxWrite) GetContractName() string {
-	if m != nil {
-		return m.ContractName
-	}
-	return ""
 }
 
 func init() {
@@ -507,60 +313,50 @@ func init() {
 	proto.RegisterType((*Input)(nil), "proto.Input")
 	proto.RegisterMapType((map[string]string)(nil), "proto.Input.ArgsEntry")
 	proto.RegisterType((*ResponseWithWriteMap)(nil), "proto.ResponseWithWriteMap")
-	proto.RegisterMapType((map[string]*TxWrite)(nil), "proto.ResponseWithWriteMap.WriteMapEntry")
-	proto.RegisterType((*KeyVersion)(nil), "proto.KeyVersion")
-	proto.RegisterType((*TxRead)(nil), "proto.TxRead")
-	proto.RegisterType((*TxWrite)(nil), "proto.TxWrite")
+	proto.RegisterMapType((map[string][]byte)(nil), "proto.ResponseWithWriteMap.WriteMapEntry")
 }
 
 func init() { proto.RegisterFile("dms_message.proto", fileDescriptor_9f090dc9f7ea29b6) }
 
 var fileDescriptor_9f090dc9f7ea29b6 = []byte{
-	// 696 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x54, 0x4b, 0x4f, 0xe3, 0x48,
-	0x10, 0x8e, 0xf3, 0x4e, 0x25, 0xb0, 0xa6, 0xc5, 0x23, 0x84, 0x25, 0x8b, 0xb2, 0x7b, 0x08, 0x20,
-	0xc2, 0x2a, 0x7b, 0xd8, 0x15, 0x7b, 0xca, 0xe0, 0x26, 0x8a, 0x98, 0x3c, 0xd4, 0x36, 0x41, 0xcc,
-	0xc5, 0x6a, 0x92, 0x4e, 0xb0, 0xc0, 0x0f, 0xd9, 0x1d, 0x48, 0xae, 0x23, 0xcd, 0x7d, 0x7e, 0xd6,
-	0x1c, 0x39, 0x72, 0x19, 0x69, 0x04, 0x7f, 0x64, 0x94, 0x8e, 0x0d, 0x61, 0x62, 0xe6, 0x34, 0xa7,
-	0x74, 0xd5, 0xf7, 0x55, 0xd5, 0xf7, 0x75, 0x75, 0x0c, 0x2b, 0x7d, 0xd3, 0xd3, 0x4d, 0xe6, 0x79,
-	0x74, 0xc8, 0x2a, 0x8e, 0x6b, 0x73, 0x1b, 0x25, 0xc4, 0x4f, 0xe9, 0x16, 0x40, 0x69, 0xaa, 0xcd,
-	0x19, 0x84, 0x76, 0x21, 0xce, 0x27, 0x0e, 0xcb, 0x4b, 0x3b, 0x52, 0x79, 0xb9, 0xba, 0x36, 0xa3,
-	0x56, 0x5e, 0x08, 0xda, 0xc4, 0x61, 0x44, 0x50, 0xd0, 0x9f, 0xb0, 0xd4, 0xb3, 0x2d, 0xee, 0xd2,
-	0x1e, 0xd7, 0x2d, 0x6a, 0xb2, 0x7c, 0x74, 0x47, 0x2a, 0x67, 0x48, 0x2e, 0x48, 0xb6, 0xa8, 0xc9,
-	0x50, 0x1e, 0x52, 0x0e, 0x9d, 0xdc, 0xd8, 0xb4, 0x9f, 0x8f, 0xed, 0x48, 0xe5, 0x1c, 0x09, 0xc2,
-	0x52, 0x17, 0xd2, 0x84, 0x79, 0x8e, 0x6d, 0x79, 0x0c, 0xad, 0x43, 0xd2, 0xe3, 0x94, 0x8f, 0x3c,
-	0x31, 0x37, 0x41, 0xfc, 0x68, 0x5a, 0xed, 0x6b, 0xf6, 0x9b, 0x07, 0xe1, 0x4f, 0xfa, 0x7e, 0x92,
-	0x20, 0xd1, 0xb0, 0x9c, 0x11, 0x47, 0x7b, 0x10, 0xa7, 0xee, 0x70, 0xda, 0x33, 0x56, 0xce, 0x56,
-	0xd7, 0x7d, 0x2f, 0x02, 0xab, 0xd4, 0xdc, 0xa1, 0x87, 0x2d, 0xee, 0x4e, 0x88, 0xe0, 0xa0, 0x0d,
-	0x48, 0x19, 0x9e, 0x6e, 0x58, 0x06, 0x17, 0x93, 0xd2, 0x24, 0x69, 0x78, 0x0d, 0xcb, 0xe0, 0x85,
-	0x7f, 0x21, 0xf3, 0xcc, 0x45, 0x32, 0xc4, 0xae, 0xd9, 0x44, 0x88, 0xcc, 0x90, 0xe9, 0x11, 0xad,
-	0x42, 0xe2, 0x96, 0xde, 0x8c, 0x02, 0x7d, 0xb3, 0xe0, 0x28, 0xfa, 0x9f, 0x54, 0x7a, 0x90, 0x60,
-	0x35, 0x30, 0x78, 0x6e, 0xf0, 0xab, 0x73, 0xd7, 0xe0, 0xac, 0x49, 0x1d, 0xb4, 0x0f, 0x69, 0xd7,
-	0xcf, 0x8b, 0x4e, 0xd9, 0xea, 0x6f, 0xbe, 0xb4, 0x80, 0x4e, 0x9e, 0x09, 0xe8, 0x04, 0x32, 0x77,
-	0xd3, 0x42, 0xdd, 0xa4, 0x4e, 0x3e, 0x2a, 0x8c, 0xec, 0xfe, 0xc0, 0x9e, 0x6f, 0x5e, 0x09, 0x0e,
-	0x33, 0x6f, 0xe9, 0x3b, 0x3f, 0x2c, 0x9c, 0xc2, 0xd2, 0x2b, 0x28, 0xc4, 0xca, 0x5f, 0xf3, 0x56,
-	0xb2, 0xd5, 0x65, 0x7f, 0x8c, 0x36, 0x16, 0x85, 0xf3, 0xd6, 0xea, 0x00, 0xa7, 0x6c, 0xd2, 0x65,
-	0xae, 0x67, 0xd8, 0x16, 0x2a, 0x40, 0xc6, 0x65, 0x03, 0x9d, 0x8f, 0x75, 0x63, 0xb6, 0x8c, 0x0c,
-	0x49, 0xb9, 0x6c, 0xa0, 0x8d, 0x1b, 0x7d, 0xb4, 0x0d, 0x30, 0xc5, 0xec, 0xc1, 0xc0, 0x63, 0x3c,
-	0x1f, 0x17, 0xcb, 0x9d, 0xb2, 0xdb, 0x22, 0x51, 0xfa, 0x28, 0x41, 0x52, 0x1b, 0x13, 0x46, 0xfb,
-	0xf3, 0x7a, 0x72, 0x21, 0x57, 0x9b, 0xf3, 0xe7, 0x2f, 0xbe, 0xba, 0x58, 0xc8, 0xab, 0xdb, 0x87,
-	0xd4, 0xed, 0x4c, 0x9d, 0x98, 0x99, 0xad, 0xae, 0xf8, 0x66, 0x5e, 0x64, 0x93, 0x80, 0x51, 0xea,
-	0x42, 0xca, 0xf7, 0xf8, 0x4b, 0x45, 0xec, 0x7d, 0x8d, 0xc2, 0xf2, 0xeb, 0x3f, 0x0e, 0x2a, 0x42,
-	0x41, 0x69, 0xaa, 0x7a, 0x13, 0xab, 0x6a, 0xad, 0x8e, 0x75, 0xed, 0xa2, 0x83, 0xf5, 0xb3, 0x96,
-	0x82, 0x4f, 0x1a, 0x2d, 0xac, 0xc8, 0x11, 0xb4, 0x0d, 0x9b, 0x0b, 0x38, 0xc1, 0xf5, 0x86, 0xaa,
-	0x61, 0x22, 0x4b, 0xe8, 0x0f, 0xd8, 0x7a, 0x13, 0xc6, 0x8a, 0x1c, 0x45, 0xbf, 0x43, 0x7e, 0x81,
-	0xd0, 0x21, 0xb8, 0x53, 0x23, 0x58, 0x8e, 0xa1, 0x02, 0xac, 0x87, 0x94, 0xd7, 0x94, 0x0b, 0x39,
-	0x8e, 0x36, 0x61, 0x6d, 0x01, 0x6b, 0xb4, 0x1a, 0x9a, 0x9c, 0x40, 0x5b, 0xb0, 0x11, 0x02, 0x75,
-	0xdb, 0xa7, 0x58, 0x4e, 0x86, 0x3a, 0xaa, 0x63, 0x4d, 0x57, 0xb5, 0x9a, 0x86, 0xe5, 0xd4, 0x1b,
-	0x8e, 0xd4, 0x4e, 0xbb, 0xa5, 0x62, 0x39, 0x1d, 0x5a, 0x7e, 0xdc, 0x6e, 0x76, 0xde, 0x63, 0x0d,
-	0x2b, 0x72, 0x26, 0x54, 0x32, 0x26, 0xa4, 0x4d, 0x64, 0xa8, 0x2a, 0x90, 0x54, 0x9a, 0x2a, 0x71,
-	0x7a, 0xe8, 0x48, 0x5c, 0xf4, 0xb1, 0x6d, 0x9a, 0x23, 0xcb, 0xe8, 0x51, 0xce, 0xd0, 0xca, 0xc2,
-	0x87, 0xab, 0xb0, 0x98, 0x2a, 0x4b, 0x7f, 0x4b, 0xef, 0xce, 0xbe, 0x3c, 0x16, 0xa5, 0xfb, 0xc7,
-	0xa2, 0xf4, 0xed, 0xb1, 0x28, 0x7d, 0x7e, 0x2a, 0x46, 0xee, 0x9f, 0x8a, 0x91, 0x87, 0xa7, 0x62,
-	0xe4, 0xc3, 0xff, 0xbd, 0x2b, 0x6a, 0x58, 0x26, 0xbd, 0x66, 0x6e, 0xc5, 0x76, 0x87, 0x87, 0x2f,
-	0xe1, 0x41, 0xb0, 0xe7, 0x03, 0xaf, 0x7f, 0x7d, 0xd0, 0xb7, 0x7b, 0xd3, 0xdc, 0xd0, 0x3e, 0x74,
-	0x2e, 0x0f, 0xc5, 0x8c, 0xa1, 0x7d, 0x99, 0x14, 0x87, 0x7f, 0xbe, 0x07, 0x00, 0x00, 0xff, 0xff,
-	0x29, 0xad, 0xdd, 0x50, 0x78, 0x05, 0x00, 0x00,
+	// 587 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x53, 0x4b, 0x4f, 0xdb, 0x4c,
+	0x14, 0xcd, 0x24, 0x24, 0x24, 0x97, 0xc7, 0x37, 0x8c, 0x78, 0x84, 0xf0, 0xd5, 0x45, 0x74, 0x13,
+	0xa8, 0x08, 0x55, 0xba, 0x68, 0x05, 0xab, 0x14, 0x0f, 0x28, 0x6a, 0x9d, 0x44, 0x63, 0x03, 0xa2,
+	0x1b, 0x6b, 0x48, 0x46, 0xc6, 0x02, 0x3f, 0x64, 0x4f, 0x40, 0xf9, 0x01, 0xdd, 0xf7, 0x67, 0xb1,
+	0x64, 0xd9, 0x4d, 0xa5, 0x0a, 0xfe, 0x48, 0x95, 0x89, 0xcd, 0xa3, 0x09, 0xed, 0x2a, 0xf7, 0xdc,
+	0x73, 0xee, 0xbd, 0xe7, 0x44, 0x1e, 0x58, 0xe8, 0x79, 0xb1, 0xed, 0x89, 0x38, 0xe6, 0x8e, 0xa8,
+	0x85, 0x51, 0x20, 0x03, 0x92, 0x57, 0x3f, 0x1b, 0x57, 0x00, 0xba, 0x61, 0x1a, 0x23, 0x8a, 0x6c,
+	0xc2, 0x94, 0x1c, 0x84, 0xa2, 0x8c, 0xd6, 0x51, 0x75, 0xbe, 0xbe, 0x34, 0x92, 0xd6, 0x1e, 0x05,
+	0xd6, 0x20, 0x14, 0x4c, 0x49, 0xc8, 0x1b, 0x98, 0xeb, 0x06, 0xbe, 0x8c, 0x78, 0x57, 0xda, 0x3e,
+	0xf7, 0x44, 0x39, 0xbb, 0x8e, 0xaa, 0x25, 0x36, 0x9b, 0x36, 0x5b, 0xdc, 0x13, 0xa4, 0x0c, 0xd3,
+	0x21, 0x1f, 0x5c, 0x06, 0xbc, 0x57, 0xce, 0xad, 0xa3, 0xea, 0x2c, 0x4b, 0xe1, 0xc6, 0x31, 0x14,
+	0x99, 0x88, 0xc3, 0xc0, 0x8f, 0x05, 0x59, 0x86, 0x42, 0x2c, 0xb9, 0xec, 0xc7, 0xea, 0x6e, 0x9e,
+	0x25, 0x68, 0x38, 0x9d, 0x78, 0x4e, 0x96, 0xa7, 0xf0, 0x2f, 0x7b, 0xbf, 0x21, 0xc8, 0x37, 0xfd,
+	0xb0, 0x2f, 0xc9, 0x16, 0x4c, 0xf1, 0xc8, 0x19, 0xee, 0xcc, 0x55, 0x67, 0xea, 0xcb, 0x49, 0x16,
+	0xc5, 0xd5, 0x1a, 0x91, 0x13, 0x53, 0x5f, 0x46, 0x03, 0xa6, 0x34, 0x64, 0x05, 0xa6, 0xdd, 0xd8,
+	0x76, 0x7d, 0x57, 0xaa, 0x4b, 0x45, 0x56, 0x70, 0xe3, 0xa6, 0xef, 0xca, 0xca, 0x07, 0x28, 0x3d,
+	0x68, 0x09, 0x86, 0xdc, 0x85, 0x18, 0x28, 0x93, 0x25, 0x36, 0x2c, 0xc9, 0x22, 0xe4, 0xaf, 0xf8,
+	0x65, 0x3f, 0xf5, 0x37, 0x02, 0xbb, 0xd9, 0x8f, 0x68, 0xe3, 0x06, 0xc1, 0x62, 0x1a, 0xf0, 0xc4,
+	0x95, 0xe7, 0x27, 0x91, 0x2b, 0x85, 0xc1, 0x43, 0xf2, 0x16, 0x8a, 0x51, 0xd2, 0x57, 0x9b, 0x66,
+	0xea, 0xff, 0x25, 0xd6, 0x52, 0x39, 0x7b, 0x10, 0x90, 0x03, 0x28, 0x5d, 0x0f, 0x07, 0x6d, 0x8f,
+	0x87, 0xe5, 0xac, 0x0a, 0xb2, 0xf9, 0x87, 0xfa, 0xe9, 0xf2, 0x5a, 0x5a, 0x8c, 0xb2, 0x15, 0xaf,
+	0x13, 0x58, 0xd9, 0x83, 0xb9, 0x67, 0xd4, 0xbf, 0xa2, 0xcc, 0x3e, 0x89, 0xb2, 0xf5, 0x33, 0x0b,
+	0xf3, 0xcf, 0x3f, 0x01, 0xa2, 0x41, 0x45, 0x37, 0x4c, 0xdb, 0xa0, 0xa6, 0xd9, 0x38, 0xa4, 0xb6,
+	0x75, 0xda, 0xa1, 0xf6, 0x51, 0x4b, 0xa7, 0x07, 0xcd, 0x16, 0xd5, 0x71, 0x86, 0xbc, 0x82, 0xd5,
+	0x31, 0x9e, 0xd1, 0xc3, 0xa6, 0x69, 0x51, 0x86, 0x11, 0x79, 0x0d, 0x6b, 0x2f, 0xd2, 0x54, 0xc7,
+	0x59, 0xf2, 0x3f, 0x94, 0xc7, 0x04, 0x1d, 0x46, 0x3b, 0x0d, 0x46, 0x71, 0x8e, 0x54, 0x60, 0x79,
+	0xc2, 0x78, 0x43, 0x3f, 0xc5, 0x53, 0x64, 0x15, 0x96, 0xc6, 0xb8, 0x66, 0xab, 0x69, 0xe1, 0x3c,
+	0x59, 0x83, 0x95, 0x09, 0xd4, 0x71, 0xfb, 0x33, 0xc5, 0x85, 0x89, 0x89, 0x0e, 0xa9, 0x65, 0x9b,
+	0x56, 0xc3, 0xa2, 0x78, 0xfa, 0x85, 0x44, 0x66, 0xa7, 0xdd, 0x32, 0x29, 0x2e, 0x4e, 0x1c, 0xdf,
+	0x6f, 0x1b, 0x9d, 0x2f, 0xd4, 0xa2, 0x3a, 0x2e, 0x4d, 0xb4, 0x4c, 0x19, 0x6b, 0x33, 0x0c, 0x75,
+	0x1d, 0x0a, 0xba, 0x61, 0xb2, 0xb0, 0x4b, 0x76, 0xd5, 0x1f, 0xbd, 0x1f, 0x78, 0x5e, 0xdf, 0x77,
+	0xbb, 0x5c, 0x0a, 0xb2, 0x30, 0xf6, 0x04, 0x2b, 0xe3, 0xad, 0x2a, 0x7a, 0x87, 0x3e, 0x1d, 0xdd,
+	0xdc, 0x69, 0xe8, 0xf6, 0x4e, 0x43, 0xbf, 0xee, 0x34, 0xf4, 0xfd, 0x5e, 0xcb, 0xdc, 0xde, 0x6b,
+	0x99, 0x1f, 0xf7, 0x5a, 0xe6, 0xeb, 0x5e, 0xf7, 0x9c, 0xbb, 0xbe, 0xc7, 0x2f, 0x44, 0x54, 0x0b,
+	0x22, 0x67, 0xe7, 0x11, 0x6e, 0xa7, 0x8f, 0x75, 0x3b, 0xee, 0x5d, 0x6c, 0xf7, 0x82, 0xee, 0xb0,
+	0xe7, 0x04, 0x3b, 0xe1, 0xd9, 0x8e, 0xba, 0xe1, 0x04, 0x67, 0x05, 0x55, 0xbc, 0xff, 0x1d, 0x00,
+	0x00, 0xff, 0xff, 0x55, 0x75, 0xc2, 0x57, 0x42, 0x04, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -835,15 +631,10 @@ func (m *ResponseWithWriteMap) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		for k := range m.WriteMap {
 			v := m.WriteMap[k]
 			baseI := i
-			if v != nil {
-				{
-					size, err := v.MarshalToSizedBuffer(dAtA[:i])
-					if err != nil {
-						return 0, err
-					}
-					i -= size
-					i = encodeVarintDmsMessage(dAtA, i, uint64(size))
-				}
+			if len(v) > 0 {
+				i -= len(v)
+				copy(dAtA[i:], v)
+				i = encodeVarintDmsMessage(dAtA, i, uint64(len(v)))
 				i--
 				dAtA[i] = 0x12
 			}
@@ -866,141 +657,6 @@ func (m *ResponseWithWriteMap) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			i -= size
 			i = encodeVarintDmsMessage(dAtA, i, uint64(size))
 		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *KeyVersion) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *KeyVersion) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *KeyVersion) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.RefOffset != 0 {
-		i = encodeVarintDmsMessage(dAtA, i, uint64(m.RefOffset))
-		i--
-		dAtA[i] = 0x20
-	}
-	if len(m.RefTxId) > 0 {
-		i -= len(m.RefTxId)
-		copy(dAtA[i:], m.RefTxId)
-		i = encodeVarintDmsMessage(dAtA, i, uint64(len(m.RefTxId)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *TxRead) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *TxRead) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *TxRead) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Version != nil {
-		{
-			size, err := m.Version.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintDmsMessage(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x22
-	}
-	if len(m.ContractName) > 0 {
-		i -= len(m.ContractName)
-		copy(dAtA[i:], m.ContractName)
-		i = encodeVarintDmsMessage(dAtA, i, uint64(len(m.ContractName)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	if len(m.Value) > 0 {
-		i -= len(m.Value)
-		copy(dAtA[i:], m.Value)
-		i = encodeVarintDmsMessage(dAtA, i, uint64(len(m.Value)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Key) > 0 {
-		i -= len(m.Key)
-		copy(dAtA[i:], m.Key)
-		i = encodeVarintDmsMessage(dAtA, i, uint64(len(m.Key)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *TxWrite) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *TxWrite) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *TxWrite) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.ContractName) > 0 {
-		i -= len(m.ContractName)
-		copy(dAtA[i:], m.ContractName)
-		i = encodeVarintDmsMessage(dAtA, i, uint64(len(m.ContractName)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	if len(m.Value) > 0 {
-		i -= len(m.Value)
-		copy(dAtA[i:], m.Value)
-		i = encodeVarintDmsMessage(dAtA, i, uint64(len(m.Value)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Key) > 0 {
-		i -= len(m.Key)
-		copy(dAtA[i:], m.Key)
-		i = encodeVarintDmsMessage(dAtA, i, uint64(len(m.Key)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -1093,75 +749,12 @@ func (m *ResponseWithWriteMap) Size() (n int) {
 			_ = k
 			_ = v
 			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovDmsMessage(uint64(l))
+			if len(v) > 0 {
+				l = 1 + len(v) + sovDmsMessage(uint64(len(v)))
 			}
 			mapEntrySize := 1 + len(k) + sovDmsMessage(uint64(len(k))) + l
 			n += mapEntrySize + 1 + sovDmsMessage(uint64(mapEntrySize))
 		}
-	}
-	return n
-}
-
-func (m *KeyVersion) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.RefTxId)
-	if l > 0 {
-		n += 1 + l + sovDmsMessage(uint64(l))
-	}
-	if m.RefOffset != 0 {
-		n += 1 + sovDmsMessage(uint64(m.RefOffset))
-	}
-	return n
-}
-
-func (m *TxRead) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Key)
-	if l > 0 {
-		n += 1 + l + sovDmsMessage(uint64(l))
-	}
-	l = len(m.Value)
-	if l > 0 {
-		n += 1 + l + sovDmsMessage(uint64(l))
-	}
-	l = len(m.ContractName)
-	if l > 0 {
-		n += 1 + l + sovDmsMessage(uint64(l))
-	}
-	if m.Version != nil {
-		l = m.Version.Size()
-		n += 1 + l + sovDmsMessage(uint64(l))
-	}
-	return n
-}
-
-func (m *TxWrite) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Key)
-	if l > 0 {
-		n += 1 + l + sovDmsMessage(uint64(l))
-	}
-	l = len(m.Value)
-	if l > 0 {
-		n += 1 + l + sovDmsMessage(uint64(l))
-	}
-	l = len(m.ContractName)
-	if l > 0 {
-		n += 1 + l + sovDmsMessage(uint64(l))
 	}
 	return n
 }
@@ -1734,10 +1327,10 @@ func (m *ResponseWithWriteMap) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.WriteMap == nil {
-				m.WriteMap = make(map[string]*TxWrite)
+				m.WriteMap = make(map[string][]byte)
 			}
 			var mapkey string
-			var mapvalue *TxWrite
+			mapvalue := []byte{}
 			for iNdEx < postIndex {
 				entryPreIndex := iNdEx
 				var wire uint64
@@ -1786,7 +1379,7 @@ func (m *ResponseWithWriteMap) Unmarshal(dAtA []byte) error {
 					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
 					iNdEx = postStringIndexmapkey
 				} else if fieldNum == 2 {
-					var mapmsglen int
+					var mapbyteLen uint64
 					for shift := uint(0); ; shift += 7 {
 						if shift >= 64 {
 							return ErrIntOverflowDmsMessage
@@ -1796,26 +1389,25 @@ func (m *ResponseWithWriteMap) Unmarshal(dAtA []byte) error {
 						}
 						b := dAtA[iNdEx]
 						iNdEx++
-						mapmsglen |= int(b&0x7F) << shift
+						mapbyteLen |= uint64(b&0x7F) << shift
 						if b < 0x80 {
 							break
 						}
 					}
-					if mapmsglen < 0 {
+					intMapbyteLen := int(mapbyteLen)
+					if intMapbyteLen < 0 {
 						return ErrInvalidLengthDmsMessage
 					}
-					postmsgIndex := iNdEx + mapmsglen
-					if postmsgIndex < 0 {
+					postbytesIndex := iNdEx + intMapbyteLen
+					if postbytesIndex < 0 {
 						return ErrInvalidLengthDmsMessage
 					}
-					if postmsgIndex > l {
+					if postbytesIndex > l {
 						return io.ErrUnexpectedEOF
 					}
-					mapvalue = &TxWrite{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
+					mapvalue = make([]byte, mapbyteLen)
+					copy(mapvalue, dAtA[iNdEx:postbytesIndex])
+					iNdEx = postbytesIndex
 				} else {
 					iNdEx = entryPreIndex
 					skippy, err := skipDmsMessage(dAtA[iNdEx:])
@@ -1832,443 +1424,6 @@ func (m *ResponseWithWriteMap) Unmarshal(dAtA []byte) error {
 				}
 			}
 			m.WriteMap[mapkey] = mapvalue
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipDmsMessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *KeyVersion) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowDmsMessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: KeyVersion: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: KeyVersion: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RefTxId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDmsMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.RefTxId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RefOffset", wireType)
-			}
-			m.RefOffset = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDmsMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.RefOffset |= int32(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipDmsMessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *TxRead) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowDmsMessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: TxRead: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: TxRead: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDmsMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Key = append(m.Key[:0], dAtA[iNdEx:postIndex]...)
-			if m.Key == nil {
-				m.Key = []byte{}
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDmsMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Value = append(m.Value[:0], dAtA[iNdEx:postIndex]...)
-			if m.Value == nil {
-				m.Value = []byte{}
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ContractName", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDmsMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ContractName = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDmsMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Version == nil {
-				m.Version = &KeyVersion{}
-			}
-			if err := m.Version.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipDmsMessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *TxWrite) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowDmsMessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: TxWrite: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: TxWrite: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDmsMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Key = append(m.Key[:0], dAtA[iNdEx:postIndex]...)
-			if m.Key == nil {
-				m.Key = []byte{}
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDmsMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Value = append(m.Value[:0], dAtA[iNdEx:postIndex]...)
-			if m.Value == nil {
-				m.Value = []byte{}
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ContractName", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDmsMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthDmsMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ContractName = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

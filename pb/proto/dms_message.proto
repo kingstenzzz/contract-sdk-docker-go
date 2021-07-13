@@ -53,41 +53,10 @@ message Input {
 message ResponseWithWriteMap {
     Response response = 1;
 
-    map<string, TxWrite> write_map = 2;
+    map<string, bytes> write_map = 2;
 }
 
 
-// key read version
-message KeyVersion {
-    // the transaction identifier that last modified the key
-    string ref_tx_id = 3;
-    // the offset of the key in the write set of the transaction, starts from 0
-    int32 ref_offset = 4;
-}
-
-// TxRead describes a read operation on a key
-message TxRead {
-    // read key
-    bytes key = 1;
-    // the value of the key
-    bytes value = 2;
-    // contract name, used in cross-contract calls
-    // set to null if only the contract in transaction request is called
-    string contract_name = 3;
-    // read key version
-    KeyVersion version = 4;
-}
-
-// TxRead describes a write/delete operation on a key
-message TxWrite {
-    // write key
-    bytes key = 1;
-    // write value
-    bytes value = 2;
-    // contract name, used in cross-contract calls
-    // set to null if only the contract in transaction request is called
-    string contract_name = 3;
-}
 
 
 

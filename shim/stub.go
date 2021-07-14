@@ -13,7 +13,7 @@ type CMStub struct {
 	Handler      *Handler
 	contractName string
 
-	// simContext
+	// cache
 	readMap  map[string][]byte
 	writeMap map[string][]byte
 }

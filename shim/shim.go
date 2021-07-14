@@ -98,9 +98,9 @@ func chatWithManager(stream ClientStream, userContract CMContract, handlerName, 
 			switch {
 			case rmsg.err == io.EOF:
 				Logger.Debugf("server closed")
-				return errors.New("received EOF, ending chaincode stream")
+				return nil
 			case rmsg.err != nil:
-				Logger.Debugf("receive err: [%s]", rmsg.err)
+				Logger.Errorf("receive err: [%s]", rmsg.err)
 				err := fmt.Errorf("receive failed: %s", rmsg.err)
 				return err
 			case rmsg.msg == nil:

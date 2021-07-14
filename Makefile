@@ -1,6 +1,4 @@
-set:
-	SET GOOS=linux
-	SET GOARCH=amd64
-
 build:
-	go build -o docker-go-contract1
+	set GOOS=linux
+	go build -ldflags="-s -w" -o docker-go-contract1
+	upx --brute docker-go-contract1

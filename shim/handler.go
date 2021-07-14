@@ -108,14 +108,14 @@ func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) 
 		go func() {
 			err := h.handleInit(readyMsg)
 			if err != nil {
-				Logger.Debugf("fail to handle init")
+				Logger.Errorf("fail to handle init")
 			}
 		}()
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_INVOKE:
 		go func() {
 			err := h.handleInvoke(readyMsg)
 			if err != nil {
-				Logger.Debugf("fail to handle invoke")
+				Logger.Errorf("fail to handle invoke")
 			}
 		}()
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_RESPONSE:

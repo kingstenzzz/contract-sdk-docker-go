@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	//LOGLEVEL = "INFO"
-	LOGLEVEL = "DEBUG"
+	LOGLEVEL = "INFO"
+	//LOGLEVEL = "DEBUG"
 	SHOWLINE = false
 )
 

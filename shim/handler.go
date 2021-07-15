@@ -136,11 +136,6 @@ func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 	}
 
 	var args map[string]string
-	if input.IsInit {
-		args = input.Args
-	} else {
-		args = nil
-	}
 
 	stub := NewCMStub(h, args, h.contractName)
 

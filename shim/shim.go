@@ -97,10 +97,9 @@ func chatWithManager(stream ClientStream, userContract CMContract, handlerName, 
 		case rmsg := <-msgAvail:
 			switch {
 			case rmsg.err == io.EOF:
-				Logger.Debugf("server closed")
-				return nil
+				err := fmt.Errorf("server ckised")
+				return err
 			case rmsg.err != nil:
-				Logger.Errorf("receive err: [%s]", rmsg.err)
 				err := fmt.Errorf("receive failed: %s", rmsg.err)
 				return err
 			case rmsg.msg == nil:

@@ -3,6 +3,7 @@ package main
 import (
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim"
+	"fmt"
 	"log"
 	"strconv"
 )

@@ -3,7 +3,6 @@ package main
 import (
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim"
-	"fmt"
 	"log"
 	"strconv"
 )
@@ -13,10 +12,10 @@ type TestContract struct {
 
 func (t *TestContract) InitContract(stub shim.CMStubInterface) protogo.Response {
 
-	//err := stub.PutState([]byte("key1"), []byte("5"))
-	//if err != nil {
-	//	return shim.Error("err to put state")
-	//}
+	err := stub.PutState([]byte("key1"), []byte("5"))
+	if err != nil {
+		return shim.Error("err to put state")
+	}
 
 	return shim.Success([]byte("Init Success"))
 }
@@ -84,9 +83,9 @@ func (t *TestContract) GetContractInfo(stub shim.CMStubInterface) protogo.Respon
 
 func main() {
 
+	//err := errors.New("sand box test err")
 	err := shim.Start(new(TestContract))
 	if err != nil {
-		fmt.Println(err)
 		log.Fatal(err)
 	}
 }

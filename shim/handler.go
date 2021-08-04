@@ -71,12 +71,12 @@ func (h *Handler) handleMessage(msg *protogo.DMSMessage, finishCh chan bool) err
 	case ready:
 		err = h.handleReady(msg, finishCh)
 	default:
-		panic(fmt.Sprintf("invalid handler state: %s", h.state))
+		err = fmt.Errorf("invalid handler state: %s", h.state)
 	}
+
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 

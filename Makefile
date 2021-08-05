@@ -7,3 +7,6 @@ build:
 	read zip_file
 	go build -o $${contract_name}
 	7z a $${zip_file} $${contract_name}
+
+build-mac:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o docker-go-contract-mac-3

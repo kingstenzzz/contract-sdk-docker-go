@@ -1,9 +1,9 @@
-build-small:
-	set GOOS=linux # doesn't work in windows, please set it up manually
-	go build -ldflags="-s -w" -o docker-go-contract20_small
-	upx --brute docker-go-contract20_small
+.ONESHELL:
 
-
-build-big:
-	set GOOS=linux  # doesn't work in windows, please set it up manually
-	go build -o docker-go-contract20_big
+build:
+	echo "please input contract name, contract name should be same as name in tx: "
+	read contract_name
+	echo "please input zip file: "
+	read zip_file
+	go build -o $${contract_name}
+	7z a $${zip_file} $${contract_name}

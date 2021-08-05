@@ -37,10 +37,10 @@ func (t *TestContract) Sum(stub shim.CMStubInterface) protogo.Response {
 
 	a, _ := strconv.Atoi(args["arg1"])
 	b, _ := strconv.Atoi(args["arg2"])
-	//key1Value, _ := stub.GetState([]byte("key1"))
-	//key1Int, _ := strconv.Atoi(string(key1Value))
+	key1Value, _ := stub.GetState([]byte("key1"))
+	key1Int, _ := strconv.Atoi(string(key1Value))
 
-	c := a + b
+	c := a + b + key1Int + 100
 
 	strc := strconv.Itoa(c)
 

@@ -16,4 +16,20 @@ type CMStubInterface interface {
 	PutState(key []byte, value []byte) error
 
 	DelState(key []byte) error
+
+	GetCreatorOrgId() (string, error)
+
+	GetCreatorRole() (string, error)
+
+	GetCreatorPk() (string, error)
+
+	GetSenderOrgId() (string, error)
+
+	GetSenderRole() (string, error)
+
+	GetSenderPk() (string, error)
+
+	GetBlockHeight() (int, error)
+
+	GetTxId() (string, error)
 }

@@ -86,10 +86,12 @@ func chatWithManager(stream ClientStream, userContract CMContract, handlerName, 
 
 	receiveMessage := func() {
 		in, err := stream.Recv()
+		if err == io.EOF {
+			return
+		}
 		msgAvail <- &recvMsg{in, err}
 	}
 
-	// todo: change two goroutines, make recev and send different
 	// finish condition: receive completed message
 	go receiveMessage()
 	for {

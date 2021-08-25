@@ -19,6 +19,8 @@ func (t *TestContract) InitContract(stub shim.CMStubInterface) protogo.Response 
 
 func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Response {
 
+	shim.Logger.Debugf("haha")
+
 	args := stub.GetArgs()
 
 	val1, _ := strconv.Atoi(args["arg1"])

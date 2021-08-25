@@ -33,10 +33,6 @@ func Start(cmContract CMContract) error {
 	handlerName := os.Args[1]
 	contractName := os.Args[2]
 
-	Logger.Debugf("sandbox - get address: %s", sockAddress)
-	Logger.Debugf("sandbox - get handler name: %s", handlerName)
-	Logger.Debugf("sandbox - get contract name: %s", contractName)
-
 	// get sandbox stream
 	stream, err := GetClientStream(sockAddress)
 	if err != nil {
@@ -53,7 +49,12 @@ func Start(cmContract CMContract) error {
 }
 
 func startClientChat(stream ClientStream, contract CMContract, handlerName, contractName string) error {
-	defer stream.CloseSend()
+	defer func(stream ClientStream) {
+		err := stream.CloseSend()
+		if err != nil {
+			return
+		}
+	}(stream)
 	return chatWithManager(stream, contract, handlerName, contractName)
 }
 
@@ -124,7 +125,6 @@ func chatWithManager(stream ClientStream, userContract CMContract, handlerName, 
 			}
 
 		case <-fCh:
-			Logger.Debugf("sandbox - finished")
 			close(msgAvail)
 			close(fCh)
 			close(errc)

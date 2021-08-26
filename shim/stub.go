@@ -209,3 +209,11 @@ func (s *CMStub) GetTxId() (string, error) {
 		return s.txId, nil
 	}
 }
+
+func (s *CMStub) EmitEvent(topic string, payload []byte) {
+
+}
+
+func (s *CMStub) Log(message string) {
+
+}

@@ -8,18 +8,30 @@ import (
 )
 
 const (
-	LOGLEVEL = "INFO"
-	//LOGLEVEL = "DEBUG"
-	SHOWLINE = false
+	SHOWLINE    = false
+	LEVEL_DEBUG = "DEBUG"
+	LEVEL_INFO  = "INFO"
+	LEVEL_WARN  = "WARN"
+	LEVEL_ERROR = "ERROR"
 )
 
-func NewDockerLogger(name string) *zap.SugaredLogger {
+func NewDockerLogger(name, level string) *zap.SugaredLogger {
 	encoder := getEncoder()
 	writeSyncer := getLogWriter()
 
-	logLevel := zapcore.DebugLevel
-	if LOGLEVEL == "INFO" {
-		logLevel = zapcore.InfoLevel
+	var logLevel zapcore.Level
+
+	switch level {
+	case LEVEL_DEBUG:
+		logLevel = zap.DebugLevel
+	case LEVEL_INFO:
+		logLevel = zap.InfoLevel
+	case LEVEL_WARN:
+		logLevel = zap.WarnLevel
+	case LEVEL_ERROR:
+		logLevel = zap.ErrorLevel
+	default:
+		logLevel = zap.InfoLevel
 	}
 
 	core := zapcore.NewCore(

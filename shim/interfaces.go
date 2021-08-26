@@ -32,4 +32,8 @@ type CMStubInterface interface {
 	GetBlockHeight() (int, error)
 
 	GetTxId() (string, error)
+
+	EmitEvent(topic string, payload []byte)
+
+	Log(message string)
 }

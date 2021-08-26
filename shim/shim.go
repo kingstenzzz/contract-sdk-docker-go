@@ -26,12 +26,13 @@ func GetClientStream(sockAddress string) (ClientStream, error) {
 
 func Start(cmContract CMContract) error {
 
-	Logger = logger.NewDockerLogger("[Sandbox]")
-
 	// passing sock address when initial the contract
 	sockAddress := os.Args[0]
 	handlerName := os.Args[1]
 	contractName := os.Args[2]
+	logLevel := os.Args[3]
+
+	Logger = logger.NewDockerLogger("[Sandbox]", logLevel)
 
 	// get sandbox stream
 	stream, err := GetClientStream(sockAddress)

@@ -1,11 +1,13 @@
 package shim
 
 import (
-	"chainmaker.org/chainmaker-contract-sdk-docker-go/logger"
 	"fmt"
-	"go.uber.org/zap"
 	"os"
 	"strconv"
+
+	"chainmaker.org/chainmaker-contract-sdk-docker-go/logger"
+	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
+	"go.uber.org/zap"
 )
 
 const (
@@ -38,7 +40,10 @@ type CMStub struct {
 	senderPk     string
 	blockHeight  string
 	txId         string
-	logger       *zap.SugaredLogger
+	// events
+	events []*protogo.Event
+	// logger
+	logger *zap.SugaredLogger
 }
 
 func initStubContractParam(args map[string]string, key string) string {
@@ -53,6 +58,7 @@ func initStubContractParam(args map[string]string, key string) string {
 func NewCMStub(handler *Handler, args map[string]string, contractName string) *CMStub {
 
 	logLevel := os.Args[3]
+	var events []*protogo.Event
 
 	stub := &CMStub{
 		args:         args,
@@ -69,6 +75,7 @@ func NewCMStub(handler *Handler, args map[string]string, contractName string) *C
 		blockHeight:  initStubContractParam(args, ContractParamBlockHeight),
 		txId:         initStubContractParam(args, ContractParamTxId),
 		logger:       logger.NewDockerLogger("[Contract]", logLevel),
+		events:       events,
 	}
 
 	return stub
@@ -217,8 +224,16 @@ func (s *CMStub) GetTxId() (string, error) {
 	}
 }
 
-func (s *CMStub) EmitEvent(topic string, payload []byte) {
+func (s *CMStub) EmitEvent(topic string, data []string) {
+	newEvent := &protogo.Event{
+		Topic: topic,
+		Data:  data,
+	}
+	s.events = append(s.events, newEvent)
+}
 
+func (s *CMStub) GetEvents() []*protogo.Event {
+	return s.events
 }
 
 func (s *CMStub) Log(message string) {

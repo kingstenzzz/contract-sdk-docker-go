@@ -33,7 +33,7 @@ type CMStubInterface interface {
 
 	GetTxId() (string, error)
 
-	EmitEvent(topic string, payload []byte)
+	EmitEvent(topic string, data []string)
 
 	Log(message string)
 }

@@ -7,9 +7,6 @@ const (
 	// OK means init or invoke successfully.
 	OK = 200
 
-	// ERRORTHRESHOLD constant - status code greater than or equal to 400 will be considered an error and rejected by endorser.
-	ERRORTHRESHOLD = 400
-
 	// ERROR constant - default error value
 	ERROR = 500
 )

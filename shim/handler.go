@@ -1,10 +1,11 @@
 package shim
 
 import (
-	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"sync"
+
+	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
+	"github.com/golang/protobuf/proto"
 )
 
 type state string
@@ -143,9 +144,11 @@ func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 
 	// construct complete message
 	writeMap := stub.GetWriteMap()
+	events := stub.GetEvents()
 	responseWithWriteMap := &protogo.ResponseWithWriteMap{
 		Response: &response,
 		WriteMap: writeMap,
+		Events:   events,
 	}
 
 	responseWithWriteMapPayload, err := proto.Marshal(responseWithWriteMap)
@@ -173,9 +176,11 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 
 	// construct complete message
 	writeMap := stub.GetWriteMap()
+	events := stub.GetEvents()
 	responseWithWriteMap := &protogo.ResponseWithWriteMap{
 		Response: &response,
 		WriteMap: writeMap,
+		Events:   events,
 	}
 
 	// construct complete message

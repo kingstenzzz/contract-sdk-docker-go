@@ -41,7 +41,12 @@ func NewDockerLogger(name, level string) *zap.SugaredLogger {
 	)
 
 	logger := zap.New(core).Named(name)
-	defer logger.Sync()
+	defer func(logger *zap.Logger) {
+		err := logger.Sync()
+		if err != nil {
+			return
+		}
+	}(logger)
 
 	if SHOWLINE {
 		logger = logger.WithOptions(zap.AddCaller())

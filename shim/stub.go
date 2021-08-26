@@ -1,7 +1,10 @@
 package shim
 
 import (
+	"chainmaker.org/chainmaker-contract-sdk-docker-go/logger"
 	"fmt"
+	"go.uber.org/zap"
+	"os"
 	"strconv"
 )
 
@@ -35,6 +38,7 @@ type CMStub struct {
 	senderPk     string
 	blockHeight  string
 	txId         string
+	logger       *zap.SugaredLogger
 }
 
 func initStubContractParam(args map[string]string, key string) string {
@@ -47,6 +51,8 @@ func initStubContractParam(args map[string]string, key string) string {
 }
 
 func NewCMStub(handler *Handler, args map[string]string, contractName string) *CMStub {
+
+	logLevel := os.Args[3]
 
 	stub := &CMStub{
 		args:         args,
@@ -62,6 +68,7 @@ func NewCMStub(handler *Handler, args map[string]string, contractName string) *C
 		senderPk:     initStubContractParam(args, ContractParamSenderPk),
 		blockHeight:  initStubContractParam(args, ContractParamBlockHeight),
 		txId:         initStubContractParam(args, ContractParamTxId),
+		logger:       logger.NewDockerLogger("[Contract]", logLevel),
 	}
 
 	return stub
@@ -215,5 +222,5 @@ func (s *CMStub) EmitEvent(topic string, payload []byte) {
 }
 
 func (s *CMStub) Log(message string) {
-
+	s.logger.Debugf(message)
 }

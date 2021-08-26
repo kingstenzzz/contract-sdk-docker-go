@@ -29,6 +29,7 @@ func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Respons
 	val := val1 + val2
 
 	stub.EmitEvent("topic1", []byte("testing"))
+	stub.Log("sent testing event")
 
 	return shim.Success([]byte(strconv.Itoa(val)))
 }

@@ -30,9 +30,9 @@ func Start(cmContract CMContract) error {
 	sockAddress := os.Args[0]
 	handlerName := os.Args[1]
 	contractName := os.Args[2]
-	logLevel := os.Args[3]
 
-	Logger = logger.NewDockerLogger("[Sandbox]", logLevel)
+	Logger = logger.NewDockerLogger("[Sandbox]", "INFO")
+	Logger.Debugf("loglevel: %s", os.Args[3])
 
 	// get sandbox stream
 	stream, err := GetClientStream(sockAddress)
@@ -45,7 +45,7 @@ func Start(cmContract CMContract) error {
 		return err
 	}
 	// wait to end
-	Logger.Debugf("sandbox - end ...")
+	Logger.Debugf("sandbox - end")
 	return nil
 }
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"log"
 	"strconv"
 
@@ -9,113 +9,32 @@ import (
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim"
 )
 
-type FactContract struct {
+type TestContract struct {
 }
 
-// 存证对象
-type Fact struct {
-	FileHash string `json:"FileHash"`
-	FileName string `json:"FileName"`
-	Time     int32  `json:"time"`
-}
-
-// 新建存证对象
-func NewFact(FileHash string, FileName string, time int32) *Fact {
-	fact := &Fact{
-		FileHash: FileHash,
-		FileName: FileName,
-		Time:     time,
-	}
-	return fact
-}
-
-func (f *FactContract) InitContract(stub shim.CMStubInterface) protogo.Response {
+func (t *TestContract) InitContract(stub shim.CMStubInterface) protogo.Response {
 
 	return shim.Success([]byte("Init Success"))
 
 }
 
-func (f *FactContract) InvokeContract(stub shim.CMStubInterface) protogo.Response {
+func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Response {
 
-	// 获取参数
-	method := stub.GetArgs()["method"]
+	args := stub.GetArgs()
 
-	switch method {
-	case "save":
-		return f.save(stub)
-	case "findByFileHash":
-		return f.findByFileHash(stub)
-	default:
-		return shim.Error("invalid method")
-	}
+	val1, _ := strconv.Atoi(args["arg1"])
+	val2, _ := strconv.Atoi(args["arg2"])
 
-}
+	val := val1 + val2
 
-func (f *FactContract) save(stub shim.CMStubInterface) protogo.Response {
-	params := stub.GetArgs()
-
-	// 获取参数
-	fileHash := params["file_hash"]
-	fileName := params["file_name"]
-	timeStr := params["time"]
-	time, err := strconv.Atoi(timeStr)
-	if err != nil {
-		msg := "time is [" + timeStr + "] not int"
-		stub.Log(msg)
-		return shim.Error(msg)
-	}
-
-	// 构建结构体
-	fact := NewFact(fileHash, fileName, int32(time))
-
-	// 序列化
-	factBytes, _ := json.Marshal(fact)
-
-	// 发送事件
-	stub.EmitEvent("topic_vx", []string{fact.FileHash, fact.FileName})
-
-	// 存储数据
-	key := []byte("fact_hash" + fact.FileHash)
-	err = stub.PutState(key, factBytes)
-	if err != nil {
-		return shim.Error("fail to save fact")
-	}
-
-	// 记录日志
-	stub.Log("[save] FileHash=" + fact.FileHash)
-	stub.Log("[save] FileName=" + fact.FileName)
-
-	// 返回结果
-	return shim.Success([]byte(fact.FileName + fact.FileHash))
-
-}
-
-func (f *FactContract) findByFileHash(stub shim.CMStubInterface) protogo.Response {
-	// 获取参数
-	FileHash := stub.GetArgs()["file_hash"]
-	// 查询结果
-	key := []byte("fact_hash" + FileHash)
-	result, err := stub.GetState(key)
-	if err != nil {
-		return shim.Error("failed to call get_state")
-	}
-
-	// 反序列化
-	var fact Fact
-	_ = json.Unmarshal(result, &fact)
-
-	// 记录日志
-	stub.Log("[find_by_file_hash] FileHash=" + fact.FileHash)
-	stub.Log("[find_by_file_hash] FileName=" + fact.FileName)
-
-	return shim.Success(result)
-
+	return shim.Success([]byte(strconv.Itoa(val)))
 }
 
 func main() {
 
-	err := shim.Start(new(FactContract))
+	err := shim.Start(new(TestContract))
 	if err != nil {
+		fmt.Println(err)
 		log.Fatal(err)
 	}
 }

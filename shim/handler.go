@@ -33,19 +33,17 @@ type Handler struct {
 	cmContract    CMContract
 	state         state
 
-	handlerName  string
-	contractName string
-	responseCh   chan []byte
+	processName string
+	responseCh  chan []byte
 }
 
 // NewChaincodeHandler returns a new instance of the shim side handler.
-func newHandler(chaincodeStream ContactStream, cmContract CMContract, handlerName, contractName string) *Handler {
+func newHandler(chaincodeStream ContactStream, cmContract CMContract, processName string) *Handler {
 	return &Handler{
 		contactStream: chaincodeStream,
 		cmContract:    cmContract,
 		state:         created,
-		handlerName:   handlerName,
-		contractName:  contractName,
+		processName:   processName,
 		responseCh:    nil,
 	}
 }
@@ -86,7 +84,7 @@ func (h *Handler) handleMessage(msg *protogo.DMSMessage, finishCh chan bool) err
 // receive registered
 func (h *Handler) handleCreated(registeredMsg *protogo.DMSMessage) error {
 	if registeredMsg.Type != protogo.DMSMessageType_DMS_MESSAGE_TYPE_REGISTERED {
-		return fmt.Errorf("sandbox - handler [%s] cannot handle message (%s) while in state: %s", h.handlerName, registeredMsg.Type, h.state)
+		return fmt.Errorf("sandbox - cannot handle message (%s) while in state: %s", registeredMsg.Type, h.state)
 	}
 	h.state = ready
 	return h.afterCreated()
@@ -94,9 +92,8 @@ func (h *Handler) handleCreated(registeredMsg *protogo.DMSMessage) error {
 
 func (h *Handler) afterCreated() error {
 	readyMsg := &protogo.DMSMessage{
-		Type:         protogo.DMSMessageType_DMS_MESSAGE_TYPE_READY,
-		ContractName: h.contractName,
-		Payload:      nil,
+		Type:    protogo.DMSMessageType_DMS_MESSAGE_TYPE_READY,
+		Payload: nil,
 	}
 	return h.SendMessage(readyMsg)
 }
@@ -137,7 +134,7 @@ func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 	}
 	args := input.Args
 
-	stub := NewCMStub(h, args, h.contractName)
+	stub := NewCMStub(h, args)
 
 	// get result
 	response := h.cmContract.InitContract(stub)
@@ -170,7 +167,7 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 	err := proto.UnmarshalMerge(readyMsg.Payload, &input)
 	args := input.Args
 
-	stub := NewCMStub(h, args, h.contractName)
+	stub := NewCMStub(h, args)
 
 	response := h.cmContract.InvokeContract(stub)
 
@@ -200,9 +197,8 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 
 func (h *Handler) SendGetStateReq(key []byte, responseCh chan []byte) error {
 	getStateMsg := &protogo.DMSMessage{
-		Type:         protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE,
-		ContractName: h.contractName,
-		Payload:      key,
+		Type:    protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE,
+		Payload: key,
 	}
 
 	h.responseCh = responseCh

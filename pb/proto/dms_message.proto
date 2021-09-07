@@ -10,11 +10,10 @@ service DMSRpc {
 }
 
 message DMSMessage {
+
     DMSMessageType type = 1;
 
-    string contract_name = 2;
-
-    bytes payload = 3;
+    bytes payload = 2;
 }
 
 enum DMSMessageType {
@@ -61,7 +60,6 @@ message ResponseWithWriteMap {
     map<string, bytes> write_map = 2;
 
     repeated Event events = 3;
-
 
 }
 

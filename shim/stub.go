@@ -24,9 +24,9 @@ const (
 )
 
 type CMStub struct {
-	args         map[string]string
-	Handler      *Handler
-	contractName string
+	args    map[string]string
+	Handler *Handler
+	//contractName string
 
 	// cache
 	readMap  map[string][]byte
@@ -55,15 +55,15 @@ func initStubContractParam(args map[string]string, key string) string {
 	}
 }
 
-func NewCMStub(handler *Handler, args map[string]string, contractName string) *CMStub {
+func NewCMStub(handler *Handler, args map[string]string) *CMStub {
 
-	logLevel := os.Args[3]
+	logLevel := os.Args[2]
 	var events []*protogo.Event
 
 	stub := &CMStub{
-		args:         args,
-		Handler:      handler,
-		contractName: contractName,
+		args:    args,
+		Handler: handler,
+		//contractName: contractName,
 		readMap:      make(map[string][]byte, MapSize),
 		writeMap:     make(map[string][]byte, MapSize),
 		creatorOrgId: initStubContractParam(args, ContractParamCreatorOrgId),
@@ -149,9 +149,9 @@ func (s *CMStub) putIntoReadSet(key []byte, value []byte) {
 	Logger.Debugf("put key[%s] - value[%s] into read set\n", string(key), string(value))
 }
 
-func (s *CMStub) constructKey(contractName string, key []byte) string {
-	return contractName + string(key)
-}
+//func (s *CMStub) constructKey(contractName string, key []byte) string {
+//	return contractName + string(key)
+//}
 
 func (s *CMStub) GetWriteMap() map[string][]byte {
 	return s.writeMap

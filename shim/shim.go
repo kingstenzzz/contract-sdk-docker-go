@@ -1,14 +1,15 @@
 package shim
 
 import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/logger"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim/internal"
-	"errors"
-	"fmt"
 	"go.uber.org/zap"
-	"io"
-	"os"
 )
 
 var Logger *zap.SugaredLogger
@@ -28,11 +29,10 @@ func Start(cmContract CMContract) error {
 
 	// passing sock address when initial the contract
 	sockAddress := os.Args[0]
-	handlerName := os.Args[1]
-	contractName := os.Args[2]
+	processName := os.Args[1]
 
-	Logger = logger.NewDockerLogger("[Sandbox]", "INFO")
-	Logger.Debugf("loglevel: %s", os.Args[3])
+	Logger = logger.NewDockerLogger("[Sandbox]", os.Args[2])
+	Logger.Debugf("loglevel: %s", os.Args[2])
 
 	// get sandbox stream
 	stream, err := GetClientStream(sockAddress)
@@ -40,7 +40,7 @@ func Start(cmContract CMContract) error {
 		return err
 	}
 
-	err = startClientChat(stream, cmContract, handlerName, contractName)
+	err = startClientChat(stream, cmContract, processName)
 	if err != nil {
 		return err
 	}
@@ -49,30 +49,29 @@ func Start(cmContract CMContract) error {
 	return nil
 }
 
-func startClientChat(stream ClientStream, contract CMContract, handlerName, contractName string) error {
+func startClientChat(stream ClientStream, contract CMContract, processName string) error {
 	defer func(stream ClientStream) {
 		err := stream.CloseSend()
 		if err != nil {
 			return
 		}
 	}(stream)
-	return chatWithManager(stream, contract, handlerName, contractName)
+	return chatWithManager(stream, contract, processName)
 }
 
-func chatWithManager(stream ClientStream, userContract CMContract, handlerName, contractName string) error {
+func chatWithManager(stream ClientStream, userContract CMContract, processName string) error {
 	Logger.Debugf("sandbox - chat with manager")
 
 	// Create the shim handler responsible for all control logic
-	handler := newHandler(stream, userContract, handlerName, contractName)
+	handler := newHandler(stream, userContract, processName)
 
 	// Send the register
-	payloadString := handlerName
+	payloadString := processName
 	payload := []byte(payloadString)
 
 	if err := handler.SendMessage(&protogo.DMSMessage{
-		Type:         protogo.DMSMessageType_DMS_MESSAGE_TYPE_REGISTER,
-		ContractName: contractName,
-		Payload:      payload,
+		Type:    protogo.DMSMessageType_DMS_MESSAGE_TYPE_REGISTER,
+		Payload: payload,
 	}); err != nil {
 		return fmt.Errorf("error sending chaincode REGISTER: %s", err)
 	}

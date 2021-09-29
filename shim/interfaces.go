@@ -67,4 +67,6 @@ type CMStubInterface interface {
 	// Log record log to chain server
 	// @param message: 事情日志的信息
 	Log(message string)
+
+	CallContract(contractName, contractVersion string) protogo.Response
 }

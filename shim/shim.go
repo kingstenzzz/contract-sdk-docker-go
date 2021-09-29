@@ -31,7 +31,7 @@ func Start(cmContract CMContract) error {
 	sockAddress := os.Args[0]
 	processName := os.Args[1]
 
-	Logger = logger.NewDockerLogger("[Sandbox]", "INFO")
+	Logger = logger.NewDockerLogger("[Sandbox]", os.Args[2])
 	Logger.Debugf("loglevel: %s", os.Args[2])
 
 	// get sandbox stream

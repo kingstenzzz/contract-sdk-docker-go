@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/golang/protobuf/proto"
+
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/logger"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"go.uber.org/zap"
@@ -99,18 +101,50 @@ func (s *CMStub) GetState(key []byte) ([]byte, error) {
 	}
 
 	// get from chain maker
-	responseCh := make(chan []byte, 1)
+	responseCh := make(chan *protogo.DMSMessage, 1)
 
 	//getStateKey := s.constructKey(s.contractName, key)
 	_ = s.Handler.SendGetStateReq(key, responseCh)
 
-	value := <-responseCh
+	result := <-responseCh
+	value := result.Payload
 	if len(value) > 0 {
 		s.putIntoReadSet(key, value)
 		return value, nil
 	}
 
 	return nil, fmt.Errorf("fail to get value from chainmaker for [%s]", string(key))
+}
+
+func (s *CMStub) CallContract(contractName, contractVersion string) protogo.Response {
+
+	// get contract result from docker manager
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	callContractPayloadStruct := &protogo.CallContractRequest{
+		ContractName:    contractName,
+		ContractVersion: contractVersion,
+	}
+
+	callContractPayload, _ := proto.Marshal(callContractPayloadStruct)
+
+	_ = s.Handler.SendCallContract(callContractPayload, responseCh)
+
+	result := <-responseCh
+	callContractResponsePayload := result.Payload
+
+	var contractResponse protogo.ContractResponse
+	_ = proto.Unmarshal(callContractResponsePayload, &contractResponse)
+
+	//todo
+
+	// merge write, read map
+
+	// merge events
+
+	// return result
+
+	return *contractResponse.Response
 }
 
 func (s *CMStub) PutState(key []byte, value []byte) error {

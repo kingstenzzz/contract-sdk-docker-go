@@ -28,7 +28,6 @@ const (
 type CMStub struct {
 	args    map[string]string
 	Handler *Handler
-	//contractName string
 
 	// cache
 	readMap  map[string][]byte
@@ -63,9 +62,8 @@ func NewCMStub(handler *Handler, args map[string]string) *CMStub {
 	var events []*protogo.Event
 
 	stub := &CMStub{
-		args:    args,
-		Handler: handler,
-		//contractName: contractName,
+		args:         args,
+		Handler:      handler,
 		readMap:      make(map[string][]byte, MapSize),
 		writeMap:     make(map[string][]byte, MapSize),
 		creatorOrgId: initStubContractParam(args, ContractParamCreatorOrgId),
@@ -121,9 +119,16 @@ func (s *CMStub) CallContract(contractName, contractVersion string) protogo.Resp
 	// get contract result from docker manager
 	responseCh := make(chan *protogo.DMSMessage, 1)
 
+	// call another contract, need to send below info:
+	// contract name
+	// contract version
+	// new args
+	// current context: read map and write map
 	callContractPayloadStruct := &protogo.CallContractRequest{
 		ContractName:    contractName,
 		ContractVersion: contractVersion,
+		WriteMap:        s.writeMap,
+		ReadMap:         s.readMap,
 	}
 
 	callContractPayload, _ := proto.Marshal(callContractPayloadStruct)
@@ -136,14 +141,18 @@ func (s *CMStub) CallContract(contractName, contractVersion string) protogo.Resp
 	var contractResponse protogo.ContractResponse
 	_ = proto.Unmarshal(callContractResponsePayload, &contractResponse)
 
-	//todo
-
-	// merge write, read map
+	// replace current read and write map
+	// new read and write map should be previous rw map + called contract rw map
+	s.readMap = contractResponse.ReadMap
+	s.writeMap = contractResponse.WriteMap
 
 	// merge events
+	// todo events merge or use different logic
+	for _, event := range contractResponse.Events {
+		s.events = append(s.events, event)
+	}
 
 	// return result
-
 	return *contractResponse.Response
 }
 
@@ -189,6 +198,10 @@ func (s *CMStub) putIntoReadSet(key []byte, value []byte) {
 
 func (s *CMStub) GetWriteMap() map[string][]byte {
 	return s.writeMap
+}
+
+func (s *CMStub) GetReadMap() map[string][]byte {
+	return s.readMap
 }
 
 func (s *CMStub) GetCreatorOrgId() (string, error) {

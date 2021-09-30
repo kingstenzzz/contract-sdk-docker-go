@@ -180,10 +180,6 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 
 	response := h.cmContract.InvokeContract(stub)
 
-	// todo if current height == 0, doesn't send read map
-
-	// todo if current height > 0, also send read map
-
 	// construct complete message
 	writeMap := stub.GetWriteMap()
 	events := stub.GetEvents()
@@ -191,6 +187,11 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 		Response: &response,
 		WriteMap: writeMap,
 		Events:   events,
+	}
+
+	// current height > 0, also send read map
+	if h.currentHeight > 0 {
+		contractResponse.ReadMap = stub.GetReadMap()
 	}
 
 	// construct complete message

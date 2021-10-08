@@ -26,7 +26,7 @@ const (
 )
 
 type CMStub struct {
-	args    map[string]string
+	args    map[string][]byte
 	Handler *Handler
 
 	// cache
@@ -47,16 +47,17 @@ type CMStub struct {
 	logger *zap.SugaredLogger
 }
 
-func initStubContractParam(args map[string]string, key string) string {
+func initStubContractParam(args map[string][]byte, key string) string {
 	if value, ok := args[key]; ok {
-		return value
+		delete(args, key)
+		return string(value)
 	} else {
 		Logger.Errorf("init contract parameter [%v] failed", key)
 		return ""
 	}
 }
 
-func NewCMStub(handler *Handler, args map[string]string) *CMStub {
+func NewCMStub(handler *Handler, args map[string][]byte) *CMStub {
 
 	logLevel := os.Args[2]
 	var events []*protogo.Event
@@ -81,7 +82,7 @@ func NewCMStub(handler *Handler, args map[string]string) *CMStub {
 	return stub
 }
 
-func (s *CMStub) GetArgs() map[string]string {
+func (s *CMStub) GetArgs() map[string][]byte {
 	return s.args
 }
 
@@ -114,7 +115,7 @@ func (s *CMStub) GetState(key []byte) ([]byte, error) {
 	return nil, fmt.Errorf("fail to get value from chainmaker for [%s]", string(key))
 }
 
-func (s *CMStub) CallContract(contractName, contractVersion string) protogo.Response {
+func (s *CMStub) CallContract(contractName, contractVersion string, args map[string][]byte) protogo.Response {
 
 	// get contract result from docker manager
 	responseCh := make(chan *protogo.DMSMessage, 1)
@@ -124,11 +125,28 @@ func (s *CMStub) CallContract(contractName, contractVersion string) protogo.Resp
 	// contract version
 	// new args
 	// current context: read map and write map
+	initialArgs := map[string][]byte{
+		ContractParamCreatorOrgId: []byte(s.creatorOrgId),
+		ContractParamCreatorRole:  []byte(s.creatorRole),
+		ContractParamCreatorPk:    []byte(s.creatorPk),
+		ContractParamSenderOrgId:  []byte(s.senderOrgId),
+		ContractParamSenderRole:   []byte(s.senderRole),
+		ContractParamSenderPk:     []byte(s.senderPk),
+		ContractParamBlockHeight:  []byte(s.blockHeight),
+		ContractParamTxId:         []byte(s.txId),
+	}
+
+	// add user defined args
+	for key, value := range args {
+		initialArgs[key] = value
+	}
+
 	callContractPayloadStruct := &protogo.CallContractRequest{
 		ContractName:    contractName,
 		ContractVersion: contractVersion,
 		WriteMap:        s.writeMap,
 		ReadMap:         s.readMap,
+		Args:            initialArgs,
 	}
 
 	callContractPayload, _ := proto.Marshal(callContractPayloadStruct)
@@ -142,7 +160,7 @@ func (s *CMStub) CallContract(contractName, contractVersion string) protogo.Resp
 	_ = proto.Unmarshal(callContractResponsePayload, &contractResponse)
 
 	// replace current read and write map
-	// new read and write map should be previous rw map + called contract rw map
+	// new read and write map equals to previous rw map + called contract rw map
 	s.readMap = contractResponse.ReadMap
 	s.writeMap = contractResponse.WriteMap
 

@@ -13,7 +13,7 @@ type CMContract interface {
 type CMStubInterface interface {
 	// GetArgs get arg from transaction parameters
 	// @return: 参数map
-	GetArgs() map[string]string
+	GetArgs() map[string][]byte
 	// GetState get [key] from chain and db
 	// @param key: 获取的参数名
 	// @return1: 获取结果
@@ -68,5 +68,5 @@ type CMStubInterface interface {
 	// @param message: 事情日志的信息
 	Log(message string)
 
-	CallContract(contractName, contractVersion string) protogo.Response
+	CallContract(contractName, contractVersion string, args map[string][]byte) protogo.Response
 }

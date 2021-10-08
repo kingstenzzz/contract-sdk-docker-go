@@ -54,7 +54,6 @@ func newHandler(chaincodeStream ContactStream, cmContract CMContract, processNam
 func (h *Handler) SendMessage(msg *protogo.DMSMessage) error {
 	h.serialLock.Lock()
 	defer h.serialLock.Unlock()
-
 	Logger.Debugf("sandbox - send message: [%v]", msg)
 
 	return h.contactStream.Send(msg)
@@ -94,8 +93,7 @@ func (h *Handler) handleCreated(registeredMsg *protogo.DMSMessage) error {
 
 func (h *Handler) afterCreated() error {
 	readyMsg := &protogo.DMSMessage{
-		Type:    protogo.DMSMessageType_DMS_MESSAGE_TYPE_READY,
-		Payload: nil,
+		Type: protogo.DMSMessageType_DMS_MESSAGE_TYPE_READY,
 	}
 	return h.SendMessage(readyMsg)
 }
@@ -121,7 +119,7 @@ func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) 
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE_RESPONSE:
 		return h.handleResponse(readyMsg)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_CALL_CONTRACT_RESPONSE:
-		return h.handleResponse(readyMsg)
+		return h.handleCallContractResponse(readyMsg)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED:
 		return h.handleCompleted(finishCh)
 	}
@@ -240,6 +238,30 @@ func (h *Handler) SendCallContract(callContractPayload []byte, responseCh chan *
 	h.responseCh = responseCh
 
 	return h.SendMessage(callContractMsg)
+}
+
+func (h *Handler) handleCallContractResponse(contractResponseMsg *protogo.DMSMessage) error {
+	var contractResponse protogo.ContractResponse
+	_ = proto.Unmarshal(contractResponseMsg.Payload, &contractResponse)
+
+	// if called contract has error, send back error result directly
+	// docker manager will shut down current contract immediately
+	if contractResponse.Response.Status != 200 {
+		completedMsg := &protogo.DMSMessage{
+			TxId:          h.txId,
+			Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED,
+			CurrentHeight: h.currentHeight,
+			Payload:       contractResponseMsg.Payload,
+		}
+
+		return h.SendMessage(completedMsg)
+	}
+
+	// todo change handle response chan: split to two chan: one for get state byte,
+	// todo another is for called contract
+
+	return h.handleResponse(contractResponseMsg)
+
 }
 
 func (h *Handler) handleResponse(readyMsg *protogo.DMSMessage) error {

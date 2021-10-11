@@ -13,11 +13,15 @@ message DMSMessage {
 
     string tx_id = 1;
 
-    DMSMessageType type = 2;
+    string contract_name = 2;
 
-    uint32 current_height = 3;
+    string contract_version = 3;
 
-    bytes payload = 4;
+    DMSMessageType type = 4;
+
+    uint32 current_height = 5;
+
+    bytes payload = 6;
 }
 
 enum DMSMessageType {
@@ -86,8 +90,12 @@ message Response {
 message Event {
     // Event topic
     string topic = 1;
+    // Event contract name
+    string contract_name = 2;
+    // Event contract version
+    string contract_version = 3;
     // Event payload
-    repeated string data = 2;
+    repeated string data = 4;
 }
 
 // real user contract response

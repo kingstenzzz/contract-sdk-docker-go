@@ -30,8 +30,10 @@ func Start(cmContract CMContract) error {
 	// passing sock address when initial the contract
 	sockAddress := os.Args[0]
 	processName := os.Args[1]
+	contractName := os.Args[2]
+	contractVersion := os.Args[3]
 
-	Logger = logger.NewDockerLogger("[Sandbox]", os.Args[2])
+	Logger = logger.NewDockerLogger("[Sandbox]", os.Args[4])
 	Logger.Debugf("loglevel: %s", os.Args[2])
 
 	// get sandbox stream
@@ -40,7 +42,7 @@ func Start(cmContract CMContract) error {
 		return err
 	}
 
-	err = startClientChat(stream, cmContract, processName)
+	err = startClientChat(stream, cmContract, processName, contractName, contractVersion)
 	if err != nil {
 		return err
 	}
@@ -49,21 +51,21 @@ func Start(cmContract CMContract) error {
 	return nil
 }
 
-func startClientChat(stream ClientStream, contract CMContract, processName string) error {
+func startClientChat(stream ClientStream, contract CMContract, processName, contractName, contractVersion string) error {
 	defer func(stream ClientStream) {
 		err := stream.CloseSend()
 		if err != nil {
 			return
 		}
 	}(stream)
-	return chatWithManager(stream, contract, processName)
+	return chatWithManager(stream, contract, processName, contractName, contractVersion)
 }
 
-func chatWithManager(stream ClientStream, userContract CMContract, processName string) error {
+func chatWithManager(stream ClientStream, userContract CMContract, processName, contractName, contractVersion string) error {
 	Logger.Debugf("sandbox - chat with manager")
 
 	// Create the shim handler responsible for all control logic
-	handler := newHandler(stream, userContract, processName)
+	handler := newHandler(stream, userContract, processName, contractName, contractVersion)
 
 	// Send the register
 	payloadString := processName

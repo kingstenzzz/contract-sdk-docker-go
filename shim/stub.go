@@ -42,7 +42,9 @@ type CMStub struct {
 	blockHeight  string
 	txId         string
 	// events
-	events []*protogo.Event
+	contractName    string
+	contractVersion string
+	events          []*protogo.Event
 	// logger
 	logger *zap.SugaredLogger
 }
@@ -57,26 +59,28 @@ func initStubContractParam(args map[string][]byte, key string) string {
 	}
 }
 
-func NewCMStub(handler *Handler, args map[string][]byte) *CMStub {
+func NewCMStub(handler *Handler, args map[string][]byte, contractName, contractVersion string) *CMStub {
 
-	logLevel := os.Args[2]
+	logLevel := os.Args[4]
 	var events []*protogo.Event
 
 	stub := &CMStub{
-		args:         args,
-		Handler:      handler,
-		readMap:      make(map[string][]byte, MapSize),
-		writeMap:     make(map[string][]byte, MapSize),
-		creatorOrgId: initStubContractParam(args, ContractParamCreatorOrgId),
-		creatorRole:  initStubContractParam(args, ContractParamCreatorRole),
-		creatorPk:    initStubContractParam(args, ContractParamCreatorPk),
-		senderOrgId:  initStubContractParam(args, ContractParamSenderOrgId),
-		senderRole:   initStubContractParam(args, ContractParamSenderRole),
-		senderPk:     initStubContractParam(args, ContractParamSenderPk),
-		blockHeight:  initStubContractParam(args, ContractParamBlockHeight),
-		txId:         initStubContractParam(args, ContractParamTxId),
-		logger:       logger.NewDockerLogger("[Contract]", logLevel),
-		events:       events,
+		args:            args,
+		Handler:         handler,
+		readMap:         make(map[string][]byte, MapSize),
+		writeMap:        make(map[string][]byte, MapSize),
+		creatorOrgId:    initStubContractParam(args, ContractParamCreatorOrgId),
+		creatorRole:     initStubContractParam(args, ContractParamCreatorRole),
+		creatorPk:       initStubContractParam(args, ContractParamCreatorPk),
+		senderOrgId:     initStubContractParam(args, ContractParamSenderOrgId),
+		senderRole:      initStubContractParam(args, ContractParamSenderRole),
+		senderPk:        initStubContractParam(args, ContractParamSenderPk),
+		blockHeight:     initStubContractParam(args, ContractParamBlockHeight),
+		txId:            initStubContractParam(args, ContractParamTxId),
+		logger:          logger.NewDockerLogger("[Contract]", logLevel),
+		events:          events,
+		contractName:    contractName,
+		contractVersion: contractVersion,
 	}
 
 	return stub
@@ -292,8 +296,10 @@ func (s *CMStub) GetTxId() (string, error) {
 
 func (s *CMStub) EmitEvent(topic string, data []string) {
 	newEvent := &protogo.Event{
-		Topic: topic,
-		Data:  data,
+		Topic:           topic,
+		ContractName:    s.contractName,
+		ContractVersion: s.contractVersion,
+		Data:            data,
 	}
 	s.events = append(s.events, newEvent)
 }

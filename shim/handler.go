@@ -27,12 +27,14 @@ type ClientStream interface {
 }
 
 type Handler struct {
-	serialLock    sync.Mutex
-	contactStream ContactStream
-	cmContract    CMContract
-	state         state
-	processName   string
-	responseCh    chan *protogo.DMSMessage
+	serialLock      sync.Mutex
+	contactStream   ContactStream
+	cmContract      CMContract
+	state           state
+	processName     string
+	contractName    string
+	contractVersion string
+	responseCh      chan *protogo.DMSMessage
 
 	// related to each tx
 	txId          string
@@ -40,13 +42,15 @@ type Handler struct {
 }
 
 // NewChaincodeHandler returns a new instance of the shim side handler.
-func newHandler(chaincodeStream ContactStream, cmContract CMContract, processName string) *Handler {
+func newHandler(chaincodeStream ContactStream, cmContract CMContract, processName, contractName, contractVersion string) *Handler {
 	return &Handler{
-		contactStream: chaincodeStream,
-		cmContract:    cmContract,
-		state:         created,
-		processName:   processName,
-		responseCh:    nil,
+		contactStream:   chaincodeStream,
+		cmContract:      cmContract,
+		state:           created,
+		processName:     processName,
+		contractName:    contractName,
+		contractVersion: contractVersion,
+		responseCh:      nil,
 	}
 }
 
@@ -138,7 +142,7 @@ func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 	}
 	args := input.Args
 
-	stub := NewCMStub(h, args)
+	stub := NewCMStub(h, args, h.contractName, h.contractVersion)
 
 	// get result
 	response := h.cmContract.InitContract(stub)
@@ -174,7 +178,7 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 	err := proto.UnmarshalMerge(readyMsg.Payload, &input)
 	args := input.Args
 
-	stub := NewCMStub(h, args)
+	stub := NewCMStub(h, args, h.contractName, h.contractVersion)
 
 	response := h.cmContract.InvokeContract(stub)
 

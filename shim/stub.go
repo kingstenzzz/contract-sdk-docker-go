@@ -141,6 +141,7 @@ func (s *CMStub) CallContract(contractName, contractVersion string, args map[str
 		initialArgs[key] = value
 	}
 
+	// todo delete read write map
 	callContractPayloadStruct := &protogo.CallContractRequest{
 		ContractName:    contractName,
 		ContractVersion: contractVersion,
@@ -165,7 +166,7 @@ func (s *CMStub) CallContract(contractName, contractVersion string, args map[str
 	s.writeMap = contractResponse.WriteMap
 
 	// merge events
-	// todo events merge or use different logic
+	// todo events merge or use different logic, change event with contract name and version
 	for _, event := range contractResponse.Events {
 		s.events = append(s.events, event)
 	}

@@ -13,15 +13,11 @@ message DMSMessage {
 
     string tx_id = 1;
 
-    string contract_name = 2;
+    DMSMessageType type = 2;
 
-    string contract_version = 3;
+    uint32 current_height = 3;
 
-    DMSMessageType type = 4;
-
-    uint32 current_height = 5;
-
-    bytes payload = 6;
+    bytes payload = 4;
 }
 
 enum DMSMessageType {
@@ -62,15 +58,8 @@ message CallContractRequest {
     string contract_name = 1;
 
     string contract_version = 2;
-
-    // current contract context write map
-    map<string, bytes> write_map = 3;
-
-    // current contract context read map
-    map<string, bytes> read_map = 4;
-
     // args
-    map<string, bytes> args = 5;
+    map<string, bytes> args = 3;
 }
 
 // --------------------  result message ---------------------

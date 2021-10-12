@@ -1,95 +1,121 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	"log"
-	"time"
+	"strconv"
 
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim"
 )
 
-type TestContract struct {
+type FactContract struct {
 }
 
-func (t *TestContract) InitContract(stub shim.CMStubInterface) protogo.Response {
+// 存证对象
+type Fact struct {
+	FileHash string `json:"FileHash"`
+	FileName string `json:"FileName"`
+	Time     int32  `json:"time"`
+}
 
-	_ = stub.PutState([]byte("test_key1"), []byte("100"))
+// 新建存证对象
+func NewFact(FileHash string, FileName string, time int32) *Fact {
+	fact := &Fact{
+		FileHash: FileHash,
+		FileName: FileName,
+		Time:     time,
+	}
+	return fact
+}
+
+func (f *FactContract) InitContract(stub shim.CMStubInterface) protogo.Response {
 
 	return shim.Success([]byte("Init Success"))
+
 }
 
-func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Response {
+func (f *FactContract) InvokeContract(stub shim.CMStubInterface) protogo.Response {
 
-	args := stub.GetArgs()
+	// 获取参数
+	method := string(stub.GetArgs()["method"])
 
-	method := string(args["method"])
 	switch method {
-	case "display":
-		return t.display()
-	case "get_state":
-		return t.getState(stub)
-	case "time_out":
-		return t.timeOut(stub)
-	case "out_of_range":
-		return t.outOfRange()
-	case "cross_contract":
-		return t.crossContract(stub)
+	case "save":
+		return f.save(stub)
+	case "findByFileHash":
+		return f.findByFileHash(stub)
 	default:
-		return shim.Error("unknow method")
+		return shim.Error("invalid method")
 	}
+
 }
 
-func (t *TestContract) display() protogo.Response {
-	return shim.Success([]byte("display successful"))
-}
+func (f *FactContract) save(stub shim.CMStubInterface) protogo.Response {
+	params := stub.GetArgs()
 
-func (t *TestContract) getState(stub shim.CMStubInterface) protogo.Response {
-
-	// captured err, return shim.Error, which is also response
-	// we assume this is a success tx, is that right?
-	result, err := stub.GetState([]byte("test_key1"))
+	// 获取参数
+	fileHash := string(params["file_hash"])
+	fileName := string(params["file_name"])
+	timeStr := string(params["time"])
+	time, err := strconv.Atoi(timeStr)
 	if err != nil {
-		return shim.Error(err.Error())
+		msg := "time is [" + timeStr + "] not int"
+		stub.Log(msg)
+		return shim.Error(msg)
 	}
+
+	// 构建结构体
+	fact := NewFact(fileHash, fileName, int32(time))
+
+	// 序列化
+	factBytes, _ := json.Marshal(fact)
+
+	// 发送事件
+	stub.EmitEvent("topic_vx", []string{fact.FileHash, fact.FileName})
+
+	// 存储数据
+	key := []byte("fact_hash" + fact.FileHash)
+	err = stub.PutState(key, factBytes)
+	if err != nil {
+		return shim.Error("fail to save fact")
+	}
+
+	// 记录日志
+	stub.Log("[save] FileHash=" + fact.FileHash)
+	stub.Log("[save] FileName=" + fact.FileName)
+
+	// 返回结果
+	return shim.Success([]byte(fact.FileName + fact.FileHash))
+
+}
+
+func (f *FactContract) findByFileHash(stub shim.CMStubInterface) protogo.Response {
+	// 获取参数
+	FileHash := string(stub.GetArgs()["file_hash"])
+
+	// 查询结果
+	result, err := stub.GetState([]byte("fact_hash" + FileHash))
+	if err != nil {
+		return shim.Error("failed to call get_state")
+	}
+
+	// 反序列化
+	var fact Fact
+	_ = json.Unmarshal(result, &fact)
+
+	// 记录日志
+	stub.Log("[find_by_file_hash] FileHash=" + fact.FileHash)
+	stub.Log("[find_by_file_hash] FileName=" + fact.FileName)
+
+	// 返回结果
 	return shim.Success(result)
-}
-
-func (t *TestContract) timeOut(stub shim.CMStubInterface) protogo.Response {
-	time.Sleep(5 * time.Second)
-	return shim.Success([]byte("success finish timeout"))
-}
-
-func (t *TestContract) outOfRange() protogo.Response {
-	var group []string
-	group[0] = "abc"
-	fmt.Println(group[0])
-	return shim.Success([]byte("exit out of range"))
-}
-
-func (t *TestContract) crossContract(stub shim.CMStubInterface) protogo.Response {
-
-	args := stub.GetArgs()
-
-	contractName := string(args["contract_name"])
-	contractVersion := string(args["contract_version"])
-
-	calledMethod := string(args["method2"])
-
-	crossContractArgs := make(map[string][]byte)
-	crossContractArgs["method"] = []byte(calledMethod)
-
-	// response could be correct or error
-	response := stub.CallContract(contractName, contractVersion, crossContractArgs)
-	stub.EmitEvent("cross contract", []string{"success"})
-	return response
 }
 
 func main() {
 
-	err := shim.Start(new(TestContract))
+	err := shim.Start(new(FactContract))
 	if err != nil {
-		fmt.Println(err)
 		log.Fatal(err)
 	}
 }

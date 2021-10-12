@@ -5,10 +5,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/golang/protobuf/proto"
-
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/logger"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
+	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 )
 
@@ -94,7 +93,7 @@ func (s *CMStub) GetState(key []byte) ([]byte, error) {
 	Logger.Debugf("get state for [%s]", string(key))
 	// get from write set
 	if value, done := s.getFromWriteSet(key); done {
-		s.putIntoWriteSet(key, value)
+		s.putIntoReadSet(key, value)
 		return value, nil
 	}
 
@@ -106,8 +105,8 @@ func (s *CMStub) GetState(key []byte) ([]byte, error) {
 	// get from chain maker
 	responseCh := make(chan *protogo.DMSMessage, 1)
 
-	//getStateKey := s.constructKey(s.contractName, key)
-	_ = s.Handler.SendGetStateReq(key, responseCh)
+	getStateKey := s.constructKey(key)
+	_ = s.Handler.SendGetStateReq([]byte(getStateKey), responseCh)
 
 	result := <-responseCh
 	value := result.Payload
@@ -117,66 +116,6 @@ func (s *CMStub) GetState(key []byte) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("fail to get value from chainmaker for [%s]", string(key))
-}
-
-func (s *CMStub) CallContract(contractName, contractVersion string, args map[string][]byte) protogo.Response {
-
-	// get contract result from docker manager
-	responseCh := make(chan *protogo.DMSMessage, 1)
-
-	// call another contract, need to send below info:
-	// contract name
-	// contract version
-	// new args
-	// current context: read map and write map
-	initialArgs := map[string][]byte{
-		ContractParamCreatorOrgId: []byte(s.creatorOrgId),
-		ContractParamCreatorRole:  []byte(s.creatorRole),
-		ContractParamCreatorPk:    []byte(s.creatorPk),
-		ContractParamSenderOrgId:  []byte(s.senderOrgId),
-		ContractParamSenderRole:   []byte(s.senderRole),
-		ContractParamSenderPk:     []byte(s.senderPk),
-		ContractParamBlockHeight:  []byte(s.blockHeight),
-		ContractParamTxId:         []byte(s.txId),
-	}
-
-	// add user defined args
-	for key, value := range args {
-		initialArgs[key] = value
-	}
-
-	// todo delete read write map
-	callContractPayloadStruct := &protogo.CallContractRequest{
-		ContractName:    contractName,
-		ContractVersion: contractVersion,
-		WriteMap:        s.writeMap,
-		ReadMap:         s.readMap,
-		Args:            initialArgs,
-	}
-
-	callContractPayload, _ := proto.Marshal(callContractPayloadStruct)
-
-	_ = s.Handler.SendCallContract(callContractPayload, responseCh)
-
-	result := <-responseCh
-	callContractResponsePayload := result.Payload
-
-	var contractResponse protogo.ContractResponse
-	_ = proto.Unmarshal(callContractResponsePayload, &contractResponse)
-
-	// replace current read and write map
-	// new read and write map equals to previous rw map + called contract rw map
-	s.readMap = contractResponse.ReadMap
-	s.writeMap = contractResponse.WriteMap
-
-	// merge events
-	// todo events merge or use different logic, change event with contract name and version
-	for _, event := range contractResponse.Events {
-		s.events = append(s.events, event)
-	}
-
-	// return result
-	return *contractResponse.Response
 }
 
 func (s *CMStub) PutState(key []byte, value []byte) error {
@@ -189,35 +128,39 @@ func (s *CMStub) DelState(key []byte) error {
 	return nil
 }
 
-func (s *CMStub) putIntoWriteSet(key []byte, value []byte) {
-	s.writeMap[string(key)] = value
-	Logger.Debugf("put key[%s] - value[%s] into write set\n", string(key), string(value))
-}
-
 func (s *CMStub) getFromWriteSet(key []byte) ([]byte, bool) {
-	Logger.Debugf("get key[%s] from write set\n", string(key))
-	if txWrite, ok := s.writeMap[string(key)]; ok {
+	contractKey := s.constructKey(key)
+	Logger.Debugf("get key[%s] from write set\n", contractKey)
+	if txWrite, ok := s.writeMap[contractKey]; ok {
 		return txWrite, true
 	}
 	return nil, false
 }
 
 func (s *CMStub) getFromReadSet(key []byte) ([]byte, bool) {
-	Logger.Debugf("get key[%s] from read set\n", string(key))
-	if txRead, ok := s.readMap[string(key)]; ok {
+	contractKey := s.constructKey(key)
+	Logger.Debugf("get key[%s] from read set\n", contractKey)
+	if txRead, ok := s.readMap[contractKey]; ok {
 		return txRead, true
 	}
 	return nil, false
 }
 
+func (s *CMStub) putIntoWriteSet(key []byte, value []byte) {
+	contractKey := s.constructKey(key)
+	s.writeMap[contractKey] = value
+	Logger.Debugf("put key[%s] - value[%s] into write set\n", contractKey, string(value))
+}
+
 func (s *CMStub) putIntoReadSet(key []byte, value []byte) {
-	s.readMap[string(key)] = value
+	contractKey := s.constructKey(key)
+	s.readMap[contractKey] = value
 	Logger.Debugf("put key[%s] - value[%s] into read set\n", string(key), string(value))
 }
 
-//func (s *CMStub) constructKey(contractName string, key []byte) string {
-//	return contractName + string(key)
-//}
+func (s *CMStub) constructKey(key []byte) string {
+	return s.Handler.contractName + "#" + string(key)
+}
 
 func (s *CMStub) GetWriteMap() map[string][]byte {
 	return s.writeMap
@@ -310,4 +253,58 @@ func (s *CMStub) GetEvents() []*protogo.Event {
 
 func (s *CMStub) Log(message string) {
 	s.logger.Debugf(message)
+}
+
+func (s *CMStub) CallContract(contractName, contractVersion string, args map[string][]byte) protogo.Response {
+
+	// get contract result from docker manager
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	initialArgs := map[string][]byte{
+		ContractParamCreatorOrgId: []byte(s.creatorOrgId),
+		ContractParamCreatorRole:  []byte(s.creatorRole),
+		ContractParamCreatorPk:    []byte(s.creatorPk),
+		ContractParamSenderOrgId:  []byte(s.senderOrgId),
+		ContractParamSenderRole:   []byte(s.senderRole),
+		ContractParamSenderPk:     []byte(s.senderPk),
+		ContractParamBlockHeight:  []byte(s.blockHeight),
+		ContractParamTxId:         []byte(s.txId),
+	}
+
+	// add user defined args
+	for key, value := range args {
+		initialArgs[key] = value
+	}
+
+	callContractPayloadStruct := &protogo.CallContractRequest{
+		ContractName:    contractName,
+		ContractVersion: contractVersion,
+		Args:            initialArgs,
+	}
+
+	callContractPayload, _ := proto.Marshal(callContractPayloadStruct)
+
+	_ = s.Handler.SendCallContract(callContractPayload, responseCh)
+
+	result := <-responseCh
+	callContractResponsePayload := result.Payload
+
+	var contractResponse protogo.ContractResponse
+	_ = proto.Unmarshal(callContractResponsePayload, &contractResponse)
+
+	// merge read write map
+	for key, value := range contractResponse.ReadMap {
+		s.readMap[key] = value
+	}
+	for key, value := range contractResponse.WriteMap {
+		s.writeMap[key] = value
+	}
+
+	// merge events
+	for _, event := range contractResponse.Events {
+		s.events = append(s.events, event)
+	}
+
+	// return result
+	return *contractResponse.Response
 }

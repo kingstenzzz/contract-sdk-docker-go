@@ -36,7 +36,7 @@ func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Respons
 	case "cross_contract":
 		return t.crossContract(stub)
 	default:
-		return shim.Error("unknow method")
+		return shim.Error("unknown method")
 	}
 }
 

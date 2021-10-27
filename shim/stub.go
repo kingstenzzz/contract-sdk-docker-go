@@ -22,6 +22,7 @@ const (
 	ContractParamSenderPk     = "__sender_pk__"
 	ContractParamBlockHeight  = "__block_height__"
 	ContractParamTxId         = "__tx_id__"
+	ContractParamTxTimeStamp  = "__tx_time_stamp__"
 )
 
 type CMStub struct {
@@ -40,6 +41,7 @@ type CMStub struct {
 	senderPk     string
 	blockHeight  string
 	txId         string
+	txTimeStamp  string
 	// events
 	contractName    string
 	contractVersion string
@@ -76,6 +78,7 @@ func NewCMStub(handler *Handler, args map[string][]byte, contractName, contractV
 		senderPk:        initStubContractParam(args, ContractParamSenderPk),
 		blockHeight:     initStubContractParam(args, ContractParamBlockHeight),
 		txId:            initStubContractParam(args, ContractParamTxId),
+		txTimeStamp:     initStubContractParam(args, ContractParamTxTimeStamp),
 		logger:          logger.NewDockerLogger("[Contract]", logLevel),
 		events:          events,
 		contractName:    contractName,
@@ -235,6 +238,14 @@ func (s *CMStub) GetTxId() (string, error) {
 	} else {
 		return s.txId, nil
 	}
+}
+
+func (s *CMStub) GetTxTimeStamp() (string, error) {
+	if len(s.txTimeStamp) == 0 {
+		return s.txTimeStamp, fmt.Errorf("can not get tx timestamp")
+	}
+
+	return s.txTimeStamp, nil
 }
 
 func (s *CMStub) EmitEvent(topic string, data []string) {

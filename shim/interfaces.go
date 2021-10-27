@@ -60,6 +60,12 @@ type CMStubInterface interface {
 	// @return1: 交易ID
 	// @return2: 获取错误信息
 	GetTxId() (string, error)
+
+	// GetTxId get tx timestamp
+	// @return1: 交易timestamp
+	// @return2: 获取错误信息
+	GetTxTimeStamp() (string, error)
+
 	// EmitEvent emit event, you can subscribe to the event using the SDK
 	// @param1 topic: 合约事件的主题
 	// @param2 data: 合约事件的数据，参数数量不可大于16

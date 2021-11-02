@@ -60,12 +60,10 @@ type CMStubInterface interface {
 	// @return1: 交易ID
 	// @return2: 获取错误信息
 	GetTxId() (string, error)
-
-	// GetTxId get tx timestamp
+	// GetTxTimeStamp get tx timestamp
 	// @return1: 交易timestamp
 	// @return2: 获取错误信息
 	GetTxTimeStamp() (string, error)
-
 	// EmitEvent emit event, you can subscribe to the event using the SDK
 	// @param1 topic: 合约事件的主题
 	// @param2 data: 合约事件的数据，参数数量不可大于16
@@ -73,6 +71,32 @@ type CMStubInterface interface {
 	// Log record log to chain server
 	// @param message: 事情日志的信息
 	Log(message string)
-
+	// CallContract invoke another contract and get response
+	// @param1: 合约名称
+	// @param2: 合约版本
+	// @param3: 合约参数
+	// @return1: 合约结果
 	CallContract(contractName, contractVersion string, args map[string][]byte) protogo.Response
+
+	//NewIterator(key string, limit string) (ResultSet, error)
+
+	//NewIteratorWithField(key string, startField string, limitField string) (ResultSet, error)
+	//
+	//NewIteratorPrefixWithKey(key string) (ResultSet, error)
+	//
+	//NewIteratorPrefixWithKeyField(startKey string, startField string) (ResultSet, error)
+}
+
+// ResultSet iterator query result
+type ResultSet interface {
+	// HasNext return does the next line exist
+	HasNext() bool
+
+	Close() (bool, error)
+}
+
+type ResultSetKV interface {
+	ResultSet
+	// Next return key,field,value,code
+	Next() (string, string, []byte, error)
 }

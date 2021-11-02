@@ -1,6 +1,8 @@
 package shim
 
 import (
+	"chainmaker.org/chainmaker/protocol/v2"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -112,13 +114,15 @@ func (s *CMStub) GetState(key []byte) ([]byte, error) {
 	_ = s.Handler.SendGetStateReq([]byte(getStateKey), responseCh)
 
 	result := <-responseCh
-	value := result.Payload
-	if len(value) > 0 {
-		s.putIntoReadSet(key, value)
-		return value, nil
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return nil, errors.New(result.Message)
 	}
 
-	return nil, fmt.Errorf("fail to get value from chainmaker for [%s]", string(key))
+	value := result.Payload
+	s.putIntoReadSet(key, value)
+	return value, nil
+
 }
 
 func (s *CMStub) PutState(key []byte, value []byte) error {
@@ -319,3 +323,34 @@ func (s *CMStub) CallContract(contractName, contractVersion string, args map[str
 	// return result
 	return *contractResponse.Response
 }
+
+//func (s *CMStub) newIterator(startKey string, startField string, limitKey string, limitField string) (ResultSet, error) {
+//	// construct request
+//
+//	// send request
+//
+//	// get error or index
+//	index := 0
+//	return &ResultSetKvImpl{index: int32(index)}, nil
+//}
+//
+//func (s *CMStub) NewIterator(key string, limit string) (ResultSet, error) {
+//	return s.newIterator(key, "", limit, "")
+//}
+//
+//// ResultSetKvImpl implementation of ResultSet
+//type ResultSetKvImpl struct { //为kv查询后的上下文
+//	index int32 // 链的句柄的index
+//}
+//
+//func (r *ResultSetKvImpl) HasNext() bool {
+//	return false
+//}
+//
+//func (r *ResultSetKvImpl) Close() (bool, error) {
+//
+//}
+//
+//func (r *ResultSetKvImpl) Next() (string, string, []byte, error) {
+//
+//}

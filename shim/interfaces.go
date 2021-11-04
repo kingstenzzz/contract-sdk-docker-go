@@ -1,6 +1,9 @@
 package shim
 
-import "chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
+import (
+	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
+	"chainmaker.org/chainmaker/common/v2/serialize"
+)
 
 // CMContract user contract interface
 type CMContract interface {
@@ -93,20 +96,25 @@ type CMStubInterface interface {
 	// @return1: 合约结果
 	CallContract(contractName, contractVersion string, args map[string][]byte) protogo.Response
 
-	//NewIterator(key string, limit string) (ResultSet, error)
-
-	//NewIteratorWithField(key string, startField string, limitField string) (ResultSet, error)
-	//
-	//NewIteratorPrefixWithKey(key string) (ResultSet, error)
-	//
-	//NewIteratorPrefixWithKeyField(startKey string, startField string) (ResultSet, error)
+	// NewIterator range of [startKey, limitKey), front closed back open
+	NewIterator(startKey string, limitKey string) (ResultSetKV, error)
+	// NewIteratorWithField range of [key+"#"+startField, key+"#"+limitField), front closed back open
+	NewIteratorWithField(key string, startField string, limitField string) (ResultSetKV, error)
+	// NewIteratorPrefixWithKeyField range of [key+"#"+field, key+"#"+field], front closed back closed
+	NewIteratorPrefixWithKeyField(key string, field string) (ResultSetKV, error)
+	// NewIteratorPrefixWithKey range of [key, key], front closed back closed
+	NewIteratorPrefixWithKey(key string) (ResultSetKV, error)
 }
 
 // ResultSet iterator query result
 type ResultSet interface {
+	// NextRow get next row,
+	// sql: column name is EasyCodec key, value is EasyCodec string val. as: val := ec.getString("columnName")
+	// kv iterator: key/value is EasyCodec key for "key"/"value", value type is []byte. as: k, _ := ec.GetString("key") v, _ := ec.GetBytes("value")
+	NextRow() (*serialize.EasyCodec, error)
 	// HasNext return does the next line exist
 	HasNext() bool
-
+	// Close .
 	Close() (bool, error)
 }
 

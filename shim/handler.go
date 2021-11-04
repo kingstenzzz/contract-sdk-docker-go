@@ -126,6 +126,10 @@ func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) 
 		return h.handleCallContractResponse(readyMsg)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED:
 		return h.handleCompleted(finishCh)
+	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_CREATE_KV_ITERATOR_RESPONSE:
+		return h.handleResponse(readyMsg)
+	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KV_ITERATOR_RESPONSE:
+		return h.handleResponse(readyMsg)
 	}
 	return nil
 }
@@ -242,6 +246,32 @@ func (h *Handler) SendCallContract(callContractPayload []byte, responseCh chan *
 	h.responseCh = responseCh
 
 	return h.SendMessage(callContractMsg)
+}
+
+func (h *Handler) SendCreateKvIteratorReq(key []byte, responseCh chan *protogo.DMSMessage) error {
+	createKvIteratorReq := &protogo.DMSMessage{
+		TxId:          h.txId,
+		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_CREATE_KV_ITERATOR_REQUEST,
+		CurrentHeight: h.currentHeight,
+		Payload:       key,
+	}
+
+	h.responseCh = responseCh
+
+	return h.SendMessage(createKvIteratorReq)
+}
+
+func (h *Handler) SendConsumeKvIteratorReq(key []byte, responseCh chan *protogo.DMSMessage) error {
+	consumeKvIteratorReq := &protogo.DMSMessage{
+		TxId:          h.txId,
+		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KV_ITERATOR_REQUEST,
+		CurrentHeight: h.currentHeight,
+		Payload:       key,
+	}
+
+	h.responseCh = responseCh
+
+	return h.SendMessage(consumeKvIteratorReq)
 }
 
 func (h *Handler) handleCallContractResponse(contractResponseMsg *protogo.DMSMessage) error {

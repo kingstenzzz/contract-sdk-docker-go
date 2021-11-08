@@ -94,23 +94,86 @@ func (s *CMStub) GetArgs() map[string][]byte {
 	return s.args
 }
 
-func (s *CMStub) GetState(key []byte) ([]byte, error) {
-	Logger.Debugf("get state for [%s]", string(key))
+func (s *CMStub) GetState(key, field string) (string, error) {
+	Logger.Debugf("get state for [%s#%s]", key, field)
 	// get from write set
-	if value, done := s.getFromWriteSet(key); done {
-		s.putIntoReadSet(key, value)
+	if value, done := s.getFromWriteSet(key, field); done {
+		s.putIntoReadSet(key, field, value)
+		return string(value), nil
+	}
+
+	// get from read set
+	if value, done := s.getFromReadSet(key, field); done {
+		return string(value), nil
+	}
+
+	// get from chain maker
+	value, err := s.getState(key, field)
+	if err != nil {
+		return "", err
+	}
+	return string(value), nil
+}
+
+func (s *CMStub) GetStateByte(key, field string) ([]byte, error) {
+	Logger.Debugf("get state for [%s#%s]", key, field)
+	// get from write set
+	if value, done := s.getFromWriteSet(key, field); done {
+		s.putIntoReadSet(key, field, value)
 		return value, nil
 	}
 
 	// get from read set
-	if value, done := s.getFromReadSet(key); done {
+	if value, done := s.getFromReadSet(key, field); done {
 		return value, nil
 	}
 
 	// get from chain maker
+	return s.getState(key, field)
+}
+
+func (s *CMStub) GetStateFromKey(key string) (string, error) {
+	Logger.Debugf("get state for [%s#%s]", key, "")
+	// get from write set
+	if value, done := s.getFromWriteSet(key, ""); done {
+		s.putIntoReadSet(key, "", value)
+		return string(value), nil
+	}
+
+	// get from read set
+	if value, done := s.getFromReadSet(key, ""); done {
+		return string(value), nil
+	}
+
+	// get from chain maker
+	value, err := s.getState(key, "")
+	if err != nil {
+		return "", err
+	}
+	return string(value), nil
+}
+
+func (s *CMStub) GetStateFromKeyByte(key string) ([]byte, error) {
+	Logger.Debugf("get state for [%s#%s]", key, "")
+	// get from write set
+	if value, done := s.getFromWriteSet(key, ""); done {
+		s.putIntoReadSet(key, "", value)
+		return value, nil
+	}
+
+	// get from read set
+	if value, done := s.getFromReadSet(key, ""); done {
+		return value, nil
+	}
+
+	// get from chain maker
+	return s.getState(key, "")
+}
+
+func (s *CMStub) getState(key, field string) ([]byte, error) {
 	responseCh := make(chan *protogo.DMSMessage, 1)
 
-	getStateKey := s.constructKey(key)
+	getStateKey := s.constructKey(key, field)
 	_ = s.Handler.SendGetStateReq([]byte(getStateKey), responseCh)
 
 	result := <-responseCh
@@ -120,23 +183,42 @@ func (s *CMStub) GetState(key []byte) ([]byte, error) {
 	}
 
 	value := result.Payload
-	s.putIntoReadSet(key, value)
+	s.putIntoReadSet(key, field, value)
 	return value, nil
-
 }
 
-func (s *CMStub) PutState(key []byte, value []byte) error {
-	s.putIntoWriteSet(key, value)
+func (s *CMStub) PutState(key, field string, value string) error {
+	s.putIntoWriteSet(key, field, []byte(value))
 	return nil
 }
 
-func (s *CMStub) DelState(key []byte) error {
-	s.putIntoWriteSet(key, nil)
+func (s *CMStub) PutStateByte(key, field string, value []byte) error {
+	s.putIntoWriteSet(key, field, value)
 	return nil
 }
 
-func (s *CMStub) getFromWriteSet(key []byte) ([]byte, bool) {
-	contractKey := s.constructKey(key)
+func (s *CMStub) PutStateFromKey(key string, value string) error {
+	s.putIntoWriteSet(key, "", []byte(value))
+	return nil
+}
+
+func (s *CMStub) PutStateFromKeyByte(key string, value []byte) error {
+	s.putIntoWriteSet(key, "", value)
+	return nil
+}
+
+func (s *CMStub) DelState(key, field string) error {
+	s.putIntoWriteSet(key, field, nil)
+	return nil
+}
+
+func (s *CMStub) DelStateFromKey(key string) error {
+	s.putIntoWriteSet(key, "", nil)
+	return nil
+}
+
+func (s *CMStub) getFromWriteSet(key, field string) ([]byte, bool) {
+	contractKey := s.constructKey(key, field)
 	Logger.Debugf("get key[%s] from write set\n", contractKey)
 	if txWrite, ok := s.writeMap[contractKey]; ok {
 		return txWrite, true
@@ -144,8 +226,8 @@ func (s *CMStub) getFromWriteSet(key []byte) ([]byte, bool) {
 	return nil, false
 }
 
-func (s *CMStub) getFromReadSet(key []byte) ([]byte, bool) {
-	contractKey := s.constructKey(key)
+func (s *CMStub) getFromReadSet(key, field string) ([]byte, bool) {
+	contractKey := s.constructKey(key, field)
 	Logger.Debugf("get key[%s] from read set\n", contractKey)
 	if txRead, ok := s.readMap[contractKey]; ok {
 		return txRead, true
@@ -153,20 +235,23 @@ func (s *CMStub) getFromReadSet(key []byte) ([]byte, bool) {
 	return nil, false
 }
 
-func (s *CMStub) putIntoWriteSet(key []byte, value []byte) {
-	contractKey := s.constructKey(key)
+func (s *CMStub) putIntoWriteSet(key, field string, value []byte) {
+	contractKey := s.constructKey(key, field)
 	s.writeMap[contractKey] = value
 	Logger.Debugf("put key[%s] - value[%s] into write set\n", contractKey, string(value))
 }
 
-func (s *CMStub) putIntoReadSet(key []byte, value []byte) {
-	contractKey := s.constructKey(key)
+func (s *CMStub) putIntoReadSet(key, field string, value []byte) {
+	contractKey := s.constructKey(key, field)
 	s.readMap[contractKey] = value
 	Logger.Debugf("put key[%s] - value[%s] into read set\n", string(key), string(value))
 }
 
-func (s *CMStub) constructKey(key []byte) string {
-	return s.Handler.contractName + "#" + string(key)
+func (s *CMStub) constructKey(key, field string) string {
+	if len(field) == 0 {
+		return s.Handler.contractName + "#" + key
+	}
+	return s.Handler.contractName + "#" + key + "#" + field
 }
 
 func (s *CMStub) GetWriteMap() map[string][]byte {

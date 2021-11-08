@@ -18,16 +18,31 @@ type CMStubInterface interface {
 	// @param key: 获取的参数名
 	// @return1: 获取结果
 	// @return2: 获取错误信息
-	GetState(key []byte) ([]byte, error)
+	GetState(key, field string) (string, error)
+
+	GetStateByte(key, field string) ([]byte, error)
+
+	GetStateFromKey(key string) (string, error)
+
+	GetStateFromKeyByte(key string) ([]byte, error)
 	// PutState put [key, value] to chain
 	// @param1 key: 参数名
 	// @param2 value: 参数值
 	// @return1: 上传参数错误信息
-	PutState(key []byte, value []byte) error
+
+	PutState(key, field string, value string) error
+
+	PutStateByte(key, field string, value []byte) error
+
+	PutStateFromKey(key string, value string) error
+
+	PutStateFromKeyByte(key string, value []byte) error
 	// DelState delete [key] to chain
 	// @param1 key: 删除的参数名
 	// @return1：删除参数的错误信息
-	DelState(key []byte) error
+	DelState(key, field string) error
+
+	DelStateFromKey(key string) error
 	// GetCreatorOrgId get tx creator org id
 	// @return1: 合约创建者的组织ID
 	// @return2: 获取错误信息

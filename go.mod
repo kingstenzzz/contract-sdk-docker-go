@@ -3,7 +3,7 @@ module chainmaker.org/chainmaker-contract-sdk-docker-go
 go 1.15
 
 require (
-	chainmaker.org/chainmaker/protocol/v2 v2.0.1-0.20211027075849-81a3dc04cdd7
+	chainmaker.org/chainmaker/protocol/v2 v2.1.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	go.uber.org/zap v1.18.1

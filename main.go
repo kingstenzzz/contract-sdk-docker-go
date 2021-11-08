@@ -29,12 +29,14 @@ func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Respons
 		return t.display()
 	case "get_state":
 		return t.getState(stub)
+	case "put_state":
+		return t.putState(stub)
+	case "del_state":
+		return t.delState(stub)
 	case "time_out":
 		return t.timeOut(stub)
 	case "out_of_range":
 		return t.outOfRange()
-	case "kv":
-		return t.kv(stub)
 	case "cross_contract":
 		return t.crossContract(stub)
 	default:
@@ -46,24 +48,42 @@ func (t *TestContract) display() protogo.Response {
 	return shim.Success([]byte("display successful"))
 }
 
-func (t *TestContract) kv(stub shim.CMStubInterface) protogo.Response {
+func (t *TestContract) putState(stub shim.CMStubInterface) protogo.Response {
+	args := stub.GetArgs()
 
-	return shim.Success([]byte("kv test success"))
+	getKey := args["key"]
+	getValue := args["value"]
+
+	err := stub.PutState(getKey, getValue)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success([]byte("put state successfully"))
 }
 
 func (t *TestContract) getState(stub shim.CMStubInterface) protogo.Response {
 
 	args := stub.GetArgs()
 
-	key1 := args["key1"]
+	getKey := args["get_state_key"]
 
-	// captured err, return shim.Error, which is also response
-	// we assume this is a success tx, is that right?
-	result, err := stub.GetState(key1)
+	result, err := stub.GetState(getKey)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 	return shim.Success(result)
+}
+
+func (t *TestContract) delState(stub shim.CMStubInterface) protogo.Response {
+	args := stub.GetArgs()
+	getKey := args["get_state_key"]
+
+	err := stub.DelState(getKey)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success([]byte("delete successfully"))
 }
 
 func (t *TestContract) timeOut(stub shim.CMStubInterface) protogo.Response {

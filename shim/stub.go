@@ -478,6 +478,22 @@ type ResultSetKvImpl struct {
 	index int32
 }
 
+func (r *ResultSetKvImpl) GetIteratorStub() *CMStub {
+	return r.s
+}
+
+func (r *ResultSetKvImpl) SetIteratorCacheStub(stub *CMStub) {
+	r.s = stub
+}
+
+func (r *ResultSetKvImpl) GetIteratorCacheIndex() int32 {
+	return r.index
+}
+
+func (r *ResultSetKvImpl) SetIteratorCacheIndex(index int32) {
+	r.index = index
+}
+
 func (r *ResultSetKvImpl) HasNext() bool {
 
 	responseCh := make(chan *protogo.DMSMessage, 1)

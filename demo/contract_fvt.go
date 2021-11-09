@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"chainmaker.org/chainmaker/common/v2/bytehelper"
+
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim"
 )
@@ -49,6 +51,27 @@ func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Respons
 		return t.outOfRange()
 	case "cross_contract":
 		return t.crossContract(stub)
+
+		// KVIterator
+		// create
+	case "new_iterator":
+		return t.newIterator(stub)
+	case "new_iterator_with_field":
+		return t.newIteratorWithField(stub)
+	case "new_iterator_prefix_with_key":
+		return t.newIteratorPrefixWithKey(stub)
+	case "new_iterator_prefix_with_key_field":
+		return t.newIteratorPrefixWithKeyField(stub)
+	// consume
+	case "iterator_has_next":
+		return t.iteratorHasNext(stub)
+	case "iterator_next":
+		return t.iteratorNext(stub)
+	case "iterator_next_row":
+		return t.iteratorNextRow(stub)
+	case "iterator_release":
+		return t.iteratorRelease(stub)
+
 	default:
 		return shim.Error("unknown method")
 	}
@@ -210,6 +233,149 @@ func (t *TestContract) crossContract(stub shim.CMStubInterface) protogo.Response
 	response := stub.CallContract(contractName, contractVersion, crossContractArgs)
 	stub.EmitEvent("cross contract", []string{"success"})
 	return response
+}
+
+// create iterator
+func (t *TestContract) newIterator(stub shim.CMStubInterface) protogo.Response {
+	paramMap := stub.GetArgs()
+	key := paramMap["key"]
+	limit := paramMap["limit"]
+	iterator, err := stub.NewIterator(string(key), string(limit))
+	if err != nil {
+		msg := "NewIterator failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+
+	kviImpl, _ := iterator.(*shim.ResultSetKvImpl)
+
+	// 返回缓存迭代器的索引
+	return shim.Success(bytehelper.IntToBytes(kviImpl.GetIteratorCacheIndex()))
+}
+
+func (t *TestContract) newIteratorWithField(stub shim.CMStubInterface) protogo.Response {
+	paramMap := stub.GetArgs()
+	key := paramMap["key"]
+	field := paramMap["field"]
+	limit := paramMap["limit"]
+	iterator, err := stub.NewIteratorWithField(string(key), string(field), string(limit))
+	if err != nil {
+		msg := "NewIteratorWithField failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+
+	kviImpl, _ := iterator.(*shim.ResultSetKvImpl)
+
+	// 返回缓存迭代器的索引
+	return shim.Success(bytehelper.IntToBytes(kviImpl.GetIteratorCacheIndex()))
+}
+
+func (t *TestContract) newIteratorPrefixWithKey(stub shim.CMStubInterface) protogo.Response {
+	paramMap := stub.GetArgs()
+	key := paramMap["key"]
+	iterator, err := stub.NewIteratorPrefixWithKey(string(key))
+	if err != nil {
+		msg := "NewIteratorPrefixWithKey failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+
+	kviImpl, _ := iterator.(*shim.ResultSetKvImpl)
+
+	// 返回缓存迭代器的索引
+	return shim.Success(bytehelper.IntToBytes(kviImpl.GetIteratorCacheIndex()))
+}
+
+func (t *TestContract) newIteratorPrefixWithKeyField(stub shim.CMStubInterface) protogo.Response {
+	paramMap := stub.GetArgs()
+	key := paramMap["key"]
+	field := paramMap["field"]
+	iterator, err := stub.NewIteratorPrefixWithKeyField(string(key), string(field))
+	if err != nil {
+		msg := "NewIteratorPrefixWithKey failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+
+	kviImpl, _ := iterator.(*shim.ResultSetKvImpl)
+
+	// 返回缓存迭代器的索引
+	return shim.Success(bytehelper.IntToBytes(kviImpl.GetIteratorCacheIndex()))
+}
+
+// consume iterator
+func (t *TestContract) iteratorHasNext(stub shim.CMStubInterface) protogo.Response {
+	paramMap := stub.GetArgs()
+	indexBytes := paramMap["index"]
+	index, _ := bytehelper.BytesToInt(indexBytes)
+	kvi := new(shim.ResultSetKvImpl)
+	kvi.SetIteratorCacheIndex(index)
+	s, _ := stub.(*shim.CMStub)
+	kvi.SetIteratorCacheStub(s)
+
+	if kvi.HasNext() {
+		return shim.Success(bytehelper.IntToBytes(1))
+	}
+
+	return shim.Success(bytehelper.IntToBytes(0))
+}
+
+func (t *TestContract) iteratorNext(stub shim.CMStubInterface) protogo.Response {
+	paramMap := stub.GetArgs()
+	indexBytes := paramMap["index"]
+	index, _ := bytehelper.BytesToInt(indexBytes)
+	kvi := new(shim.ResultSetKvImpl)
+	kvi.SetIteratorCacheIndex(index)
+	s, _ := stub.(*shim.CMStub)
+	kvi.SetIteratorCacheStub(s)
+
+	key, field, value, err := kvi.Next()
+	if err != nil {
+		msg := "iterator failed to get the next element"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+
+	return shim.Success([]byte(key + "#" + field + "#" + string(value)))
+}
+
+func (t *TestContract) iteratorNextRow(stub shim.CMStubInterface) protogo.Response {
+	paramMap := stub.GetArgs()
+	indexBytes := paramMap["index"]
+	index, _ := bytehelper.BytesToInt(indexBytes)
+	kvi := new(shim.ResultSetKvImpl)
+	kvi.SetIteratorCacheIndex(index)
+	s, _ := stub.(*shim.CMStub)
+	kvi.SetIteratorCacheStub(s)
+
+	row, err := kvi.NextRow()
+	if err != nil {
+		msg := "iterator failed to get the next element"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+
+	return shim.Success(row.Marshal())
+}
+
+func (t *TestContract) iteratorRelease(stub shim.CMStubInterface) protogo.Response {
+	paramMap := stub.GetArgs()
+	indexBytes := paramMap["index"]
+	index, _ := bytehelper.BytesToInt(indexBytes)
+	kvi := new(shim.ResultSetKvImpl)
+	kvi.SetIteratorCacheIndex(index)
+	s, _ := stub.(*shim.CMStub)
+	kvi.SetIteratorCacheStub(s)
+
+	ok, err := kvi.Close()
+	if err != nil || !ok {
+		msg := "close failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+
+	return shim.Success([]byte("SUCCESS"))
 }
 
 func main() {

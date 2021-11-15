@@ -1,6 +1,7 @@
 package shim
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -440,6 +441,11 @@ func (s *CMStub) newIterator(iteratorFuncName, startKey string, startField strin
 	ResultSetKV, error) {
 
 	responseCh := make(chan *protogo.DMSMessage, 1)
+	writeMap := s.GetWriteMap()
+	wMBytes, err := json.Marshal(writeMap)
+	if err != nil {
+		return nil, err
+	}
 
 	createKvIteratorKey := func() []byte {
 		str :=
@@ -448,9 +454,13 @@ func (s *CMStub) newIterator(iteratorFuncName, startKey string, startField strin
 				startKey + "#" +
 				startField + "#" +
 				limitKey + "#" +
-				limitField
+				limitField + "#" +
+				string(wMBytes)
 		return []byte(str)
 	}()
+
+	// reset writeMap
+	s.writeMap = make(map[string][]byte, MapSize)
 
 	_ = s.Handler.SendCreateKvIteratorReq(createKvIteratorKey, responseCh)
 
@@ -476,22 +486,6 @@ type ResultSetKvImpl struct {
 	s *CMStub
 
 	index int32
-}
-
-func (r *ResultSetKvImpl) GetIteratorStub() *CMStub {
-	return r.s
-}
-
-func (r *ResultSetKvImpl) SetIteratorCacheStub(stub *CMStub) {
-	r.s = stub
-}
-
-func (r *ResultSetKvImpl) GetIteratorCacheIndex() int32 {
-	return r.index
-}
-
-func (r *ResultSetKvImpl) SetIteratorCacheIndex(index int32) {
-	r.index = index
 }
 
 func (r *ResultSetKvImpl) HasNext() bool {
@@ -523,6 +517,27 @@ func (r *ResultSetKvImpl) HasNext() bool {
 	return true
 }
 
+func (r *ResultSetKvImpl) Close() (bool, error) {
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	closeKey := func() []byte {
+		str := FuncKvIteratorClose + "#" + string(bytehelper.IntToBytes(r.index))
+		return []byte(str)
+	}()
+
+	_ = r.s.Handler.SendConsumeKvIteratorReq(closeKey, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return false, errors.New(result.Message)
+	} else if result.ResultCode == protocol.ContractSdkSignalResultSuccess {
+		return true, nil
+	}
+
+	return true, nil
+}
+
 func (r *ResultSetKvImpl) NextRow() (*serialize.EasyCodec, error) {
 	responseCh := make(chan *protogo.DMSMessage, 1)
 
@@ -550,27 +565,6 @@ func (r *ResultSetKvImpl) NextRow() (*serialize.EasyCodec, error) {
 	ec.AddBytes("value", []byte(value))
 
 	return ec, nil
-}
-
-func (r *ResultSetKvImpl) Close() (bool, error) {
-	responseCh := make(chan *protogo.DMSMessage, 1)
-
-	closeKey := func() []byte {
-		str := FuncKvIteratorClose + "#" + string(bytehelper.IntToBytes(r.index))
-		return []byte(str)
-	}()
-
-	_ = r.s.Handler.SendConsumeKvIteratorReq(closeKey, responseCh)
-
-	result := <-responseCh
-
-	if result.ResultCode == protocol.ContractSdkSignalResultFail {
-		return false, errors.New(result.Message)
-	} else if result.ResultCode == protocol.ContractSdkSignalResultSuccess {
-		return true, nil
-	}
-
-	return true, nil
 }
 
 func (r *ResultSetKvImpl) Next() (string, string, []byte, error) {

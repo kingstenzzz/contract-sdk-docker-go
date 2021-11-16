@@ -1,14 +1,18 @@
 package shim
 
 import (
-	"chainmaker.org/chainmaker/protocol/v2"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/logger"
 	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
+	"chainmaker.org/chainmaker/common/v2/bytehelper"
+	"chainmaker.org/chainmaker/common/v2/serialize"
+	"chainmaker.org/chainmaker/protocol/v2"
 	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 )
@@ -409,33 +413,168 @@ func (s *CMStub) CallContract(contractName, contractVersion string, args map[str
 	return *contractResponse.Response
 }
 
-//func (s *CMStub) newIterator(startKey string, startField string, limitKey string, limitField string) (ResultSet, error) {
-//	// construct request
-//
-//	// send request
-//
-//	// get error or index
-//	index := 0
-//	return &ResultSetKvImpl{index: int32(index)}, nil
-//}
-//
-//func (s *CMStub) NewIterator(key string, limit string) (ResultSet, error) {
-//	return s.newIterator(key, "", limit, "")
-//}
-//
-//// ResultSetKvImpl implementation of ResultSet
-//type ResultSetKvImpl struct { //为kv查询后的上下文
-//	index int32 // 链的句柄的index
-//}
-//
-//func (r *ResultSetKvImpl) HasNext() bool {
-//	return false
-//}
-//
-//func (r *ResultSetKvImpl) Close() (bool, error) {
-//
-//}
-//
-//func (r *ResultSetKvImpl) Next() (string, string, []byte, error) {
-//
-//}
+func (s *CMStub) NewIterator(startKey string, limitKey string) (ResultSetKV, error) {
+	return s.newIterator(FuncKvIteratorCreate, startKey, "", limitKey, "")
+}
+
+func (s *CMStub) NewIteratorWithField(key string, startField string, limitField string) (ResultSetKV, error) {
+	return s.newIterator(FuncKvIteratorCreate, key, startField, key, limitField)
+}
+
+func (s *CMStub) NewIteratorPrefixWithKeyField(startKey string, startField string) (ResultSetKV, error) {
+	return s.newIterator(FuncKvPreIteratorCreate, startKey, startField, "", "")
+}
+
+func (s *CMStub) NewIteratorPrefixWithKey(key string) (ResultSetKV, error) {
+	return s.NewIteratorPrefixWithKeyField(key, "")
+}
+
+const (
+	FuncKvIteratorCreate    = "createKvIterator"
+	FuncKvPreIteratorCreate = "createKvPreIterator"
+	FuncKvIteratorHasNext   = "kvIteratorHasNext"
+	FuncKvIteratorNext      = "kvIteratorNext"
+	FuncKvIteratorClose     = "kvIteratorClose"
+)
+
+func (s *CMStub) newIterator(iteratorFuncName, startKey string, startField string, limitKey string, limitField string) (
+	ResultSetKV, error) {
+
+	responseCh := make(chan *protogo.DMSMessage, 1)
+	writeMap := s.GetWriteMap()
+	wMBytes, err := json.Marshal(writeMap)
+	if err != nil {
+		return nil, err
+	}
+
+	createKvIteratorKey := func() []byte {
+		str :=
+			s.Handler.contractName + "#" +
+				iteratorFuncName + "#" +
+				startKey + "#" +
+				startField + "#" +
+				limitKey + "#" +
+				limitField + "#" +
+				string(wMBytes)
+		return []byte(str)
+	}()
+
+	// reset writeMap
+	s.writeMap = make(map[string][]byte, MapSize)
+
+	_ = s.Handler.SendCreateKvIteratorReq(createKvIteratorKey, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return nil, errors.New(result.Message)
+	}
+
+	value := result.Payload
+
+	index, err := bytehelper.BytesToInt(value)
+	if err != nil {
+		return nil, fmt.Errorf("get iterator index failed, %s", err.Error())
+	}
+
+	return &ResultSetKvImpl{s: s, index: index}, nil
+
+}
+
+// ResultSetKvImpl iterator query result KVdb
+type ResultSetKvImpl struct {
+	s *CMStub
+
+	index int32
+}
+
+func (r *ResultSetKvImpl) HasNext() bool {
+
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	hasNextKey := func() []byte {
+		str := FuncKvIteratorHasNext + "#" + string(bytehelper.IntToBytes(r.index))
+		return []byte(str)
+	}()
+
+	_ = r.s.Handler.SendConsumeKvIteratorReq(hasNextKey, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return false
+	}
+
+	has, err := bytehelper.BytesToInt(result.Payload)
+	if err != nil {
+		return false
+	}
+
+	if has == 0 {
+		return false
+	}
+
+	return true
+}
+
+func (r *ResultSetKvImpl) Close() (bool, error) {
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	closeKey := func() []byte {
+		str := FuncKvIteratorClose + "#" + string(bytehelper.IntToBytes(r.index))
+		return []byte(str)
+	}()
+
+	_ = r.s.Handler.SendConsumeKvIteratorReq(closeKey, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return false, errors.New(result.Message)
+	} else if result.ResultCode == protocol.ContractSdkSignalResultSuccess {
+		return true, nil
+	}
+
+	return true, nil
+}
+
+func (r *ResultSetKvImpl) NextRow() (*serialize.EasyCodec, error) {
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	nextRowKey := func() []byte {
+		str := FuncKvIteratorNext + "#" + string(bytehelper.IntToBytes(r.index))
+		return []byte(str)
+	}()
+
+	_ = r.s.Handler.SendConsumeKvIteratorReq(nextRowKey, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return nil, errors.New(result.Message)
+	}
+
+	payload := strings.Split(string(result.Payload), "#")
+	key := payload[0]
+	field := payload[1]
+	value := payload[2]
+
+	ec := serialize.NewEasyCodec()
+	ec.AddString("key", key)
+	ec.AddString("field", field)
+	ec.AddBytes("value", []byte(value))
+
+	return ec, nil
+}
+
+func (r *ResultSetKvImpl) Next() (string, string, []byte, error) {
+	ec, err := r.NextRow()
+	if err != nil {
+		return "", "", nil, err
+	}
+	key, _ := ec.GetString("key")
+	field, _ := ec.GetString("field")
+	v, _ := ec.GetBytes("value")
+
+	return key, field, v, nil
+}

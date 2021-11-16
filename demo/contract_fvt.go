@@ -49,6 +49,8 @@ func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Respons
 		return t.outOfRange()
 	case "cross_contract":
 		return t.crossContract(stub)
+	case "cross_contract_self":
+		return t.callSelf(stub)
 
 	// kvIterator
 	case "construct_data":
@@ -216,6 +218,20 @@ func (t *TestContract) crossContract(stub shim.CMStubInterface) protogo.Response
 	// response could be correct or error
 	response := stub.CallContract(contractName, contractVersion, crossContractArgs)
 	stub.EmitEvent("cross contract", []string{"success"})
+	return response
+}
+
+func (t *TestContract) callSelf(stub shim.CMStubInterface) protogo.Response {
+
+	stub.Log("testing call self")
+
+	contractName := "contract_test"
+	contractVersion := "v1.0.0"
+
+	crossContractArgs := make(map[string][]byte)
+	crossContractArgs["method"] = []byte("cross_contract_self")
+
+	response := stub.CallContract(contractName, contractVersion, crossContractArgs)
 	return response
 }
 

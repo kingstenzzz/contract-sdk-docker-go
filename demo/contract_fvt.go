@@ -49,6 +49,13 @@ func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Respons
 		return t.outOfRange()
 	case "cross_contract":
 		return t.crossContract(stub)
+
+	// kvIterator
+	case "construct_data":
+		return t.constructData(stub)
+	case "kv_iterator_test":
+		return t.kvIterator(stub)
+
 	default:
 		return shim.Error("unknown method")
 	}
@@ -210,6 +217,134 @@ func (t *TestContract) crossContract(stub shim.CMStubInterface) protogo.Response
 	response := stub.CallContract(contractName, contractVersion, crossContractArgs)
 	stub.EmitEvent("cross contract", []string{"success"})
 	return response
+}
+
+// constructData 提供Kv迭代器的测试数据
+/*
+	| Key   | Field   | Value |
+	| ---   | ---     | ---   |
+	| key1  | field1  | val   |
+	| key1  | field2  | val   |
+	| key1  | field23 | val   |
+	| ey1   | field3  | val   |
+	| key2  | field1  | val   |
+	| key3  | field2  | val   |
+	| key33 | field2  | val   |
+	| key33 | field2  | val   |
+	| key4  | field3  | val   |
+*/
+func (t *TestContract) constructData(stub shim.CMStubInterface) protogo.Response {
+	dataList := []struct {
+		key   string
+		field string
+		value string
+	}{
+		{key: "key1", field: "field1", value: "val"},
+		{key: "key1", field: "field2", value: "val"},
+		{key: "key1", field: "field23", value: "val"},
+		{key: "key1", field: "field3", value: "val"},
+		{key: "key2", field: "field1", value: "val"},
+		{key: "key3", field: "field2", value: "val"},
+		{key: "key33", field: "field2", value: "val"},
+		{key: "key33", field: "field2", value: "val"},
+		{key: "key4", field: "field3", value: "val"},
+	}
+
+	for _, data := range dataList {
+		err := stub.PutState(data.key, data.field, data.value)
+		if err != nil {
+			msg := fmt.Sprintf("constructData failed, %s", err.Error())
+			stub.Log(msg)
+			return shim.Error(msg)
+		}
+	}
+
+	return shim.Success([]byte("construct success!"))
+}
+
+// kvIterator 前置数据
+/*
+	| Key   | Field   | Value |
+	| ---   | ---     | ---   |
+	| key1  | field1  | val   |
+	| key1  | field2  | val   |
+	| key1  | field23 | val   |
+	| ey1   | field3  | val   |
+	| key2  | field1  | val   |
+	| key3  | field2  | val   |
+	| key33 | field2  | val   |
+	| key33 | field2  | val   |
+	| key4  | field3  | val   |
+*/
+func (t *TestContract) kvIterator(stub shim.CMStubInterface) protogo.Response {
+	stub.Log("===kvIterator START===")
+	iteratorList := make([]shim.ResultSetKV, 4)
+
+	// 能查询出 key2, key3, key33 三条数据
+	iterator, err := stub.NewIterator("key2", "key4")
+	if err != nil {
+		msg := "NewIterator failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+	iteratorList[0] = iterator
+
+	// 能查询出 field1, field2, field23 三条数据
+	iteratorWithField, err := stub.NewIteratorWithField("key1", "field1", "field3")
+	if err != nil {
+		// msg := "create with " + string(key1) + string(field1) + string(field3) + " failed"
+		msg := "create with " + "key1" + "field1" + "field3" + " failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+	iteratorList[1] = iteratorWithField
+
+	// 能查询出 key3, key33 两条数据
+	preWithKeyIterator, err := stub.NewIteratorPrefixWithKey("key3")
+	if err != nil {
+		msg := "NewIteratorPrefixWithKey failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+	iteratorList[2] = preWithKeyIterator
+
+	// 能查询出 field2, field23 三条数据
+	preWithKeyFieldIterator, err := stub.NewIteratorPrefixWithKeyField("key1", "field2")
+	if err != nil {
+		msg := "NewIteratorPrefixWithKeyField failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+	iteratorList[3] = preWithKeyFieldIterator
+
+	for index, iter := range iteratorList {
+		index++
+		stub.Log(fmt.Sprintf("===iterator %d START===", index))
+		for iter.HasNext() {
+			stub.Log("HasNext Success")
+			key, field, value, err := iter.Next()
+			if err != nil {
+				msg := "iterator failed to get the next element"
+				stub.Log(msg)
+				return shim.Error(msg)
+			}
+
+			stub.Log(fmt.Sprintf("===[key: %s]===", key))
+			stub.Log(fmt.Sprintf("===[field: %s]===", field))
+			stub.Log(fmt.Sprintf("===[value: %s]===", value))
+		}
+
+		closed, err := iter.Close()
+		if !closed || err != nil {
+			msg := fmt.Sprintf("iterator %d close failed, %s", index, err.Error())
+			stub.Log(msg)
+			return shim.Error(msg)
+		}
+		stub.Log(fmt.Sprintf("===iterator %d END===", index))
+	}
+	stub.Log("===kvIterator END===")
+
+	return shim.Success([]byte("SUCCESS"))
 }
 
 func main() {

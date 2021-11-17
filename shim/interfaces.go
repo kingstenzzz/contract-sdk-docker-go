@@ -17,34 +17,58 @@ type CMStubInterface interface {
 	// GetArgs get arg from transaction parameters
 	// @return: 参数map
 	GetArgs() map[string][]byte
-	// GetState get [key] from chain and db
+	// GetState get [key, field] from chain and db
 	// @param key: 获取的参数名
-	// @return1: 获取结果
+	// @param field: 获取的参数名
+	// @return1: 获取结果，格式为string
 	// @return2: 获取错误信息
 	GetState(key, field string) (string, error)
-
+	// GetStateByte get [key, field] from chain and db
+	// @param key: 获取的参数名
+	// @param field: 获取的参数名
+	// @return1: 获取结果，格式为[]byte
+	// @return2: 获取错误信息
 	GetStateByte(key, field string) ([]byte, error)
-
+	// GetStateFromKey get [key] from chain and db
+	// @param key: 获取的参数名
+	// @return1: 获取结果，格式为string
+	// @return2: 获取错误信息
 	GetStateFromKey(key string) (string, error)
-
+	// GetStateFromKeyByte get [key] from chain and db
+	// @param key: 获取的参数名
+	// @return1: 获取结果，格式为[]byte
+	// @return2: 获取错误信息
 	GetStateFromKeyByte(key string) ([]byte, error)
-	// PutState put [key, value] to chain
+	// PutState put [key, field, value] to chain
 	// @param1 key: 参数名
-	// @param2 value: 参数值
+	// @param1 field: 参数名
+	// @param2 value: 参数值，类型为string
 	// @return1: 上传参数错误信息
-
 	PutState(key, field string, value string) error
-
+	// PutStateByte put [key, field, value] to chain
+	// @param1 key: 参数名
+	// @param1 field: 参数名
+	// @param2 value: 参数值，类型为[]byte
+	// @return1: 上传参数错误信息
 	PutStateByte(key, field string, value []byte) error
-
+	// PutStateFromKey put [key, value] to chain
+	// @param1 key: 参数名
+	// @param2 value: 参数值，类型为string
+	// @return1: 上传参数错误信息
 	PutStateFromKey(key string, value string) error
-
+	// PutStateFromKeyByte put [key, value] to chain
+	// @param1 key: 参数名
+	// @param2 value: 参数值，类型为[]byte
+	// @return1: 上传参数错误信息
 	PutStateFromKeyByte(key string, value []byte) error
-	// DelState delete [key] to chain
+	// DelState delete [key, field] to chain
 	// @param1 key: 删除的参数名
+	// @param1 field: 删除的参数名
 	// @return1：删除参数的错误信息
 	DelState(key, field string) error
-
+	// DelStateFromKey delete [key] to chain
+	// @param1 key: 删除的参数名
+	// @return1：删除参数的错误信息
 	DelStateFromKey(key string) error
 	// GetCreatorOrgId get tx creator org id
 	// @return1: 合约创建者的组织ID
@@ -95,7 +119,6 @@ type CMStubInterface interface {
 	// @param3: 合约参数
 	// @return1: 合约结果
 	CallContract(contractName, contractVersion string, args map[string][]byte) protogo.Response
-
 	// NewIterator range of [startKey, limitKey), front closed back open
 	// @param1: 范围查询起始key
 	// @param2: 范围查询结束key

@@ -143,6 +143,8 @@ type CMStubInterface interface {
 	// @return1: 根据起始位置生成的迭代器
 	// @return2: 获取错误信息
 	NewIteratorPrefixWithKey(key string) (ResultSetKV, error)
+
+	NewHistoryKvIterForKey(key, field string) (KeyHistoryKvIter, error)
 }
 
 // ResultSet iterator query result
@@ -161,4 +163,10 @@ type ResultSetKV interface {
 	ResultSet
 	// Next return key,field,value,code
 	Next() (string, string, []byte, error)
+}
+
+type KeyHistoryKvIter interface {
+	ResultSet
+	// Next return txId, blockHeight, timestamp, value, isDelete, error
+	Next() (*KeyModification, error)
 }

@@ -58,9 +58,73 @@ func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Respons
 	case "kv_iterator_test":
 		return t.kvIterator(stub)
 
+	// keyHistoryIterator
+	case "key_history_kv_iter":
+		return t.keyHistoryIter(stub)
+
 	default:
-		return shim.Error("unknown method")
+		msg := fmt.Sprintf("unknown method")
+		return shim.Error(msg)
 	}
+}
+
+func (t *TestContract) keyHistoryIter(stub shim.CMStubInterface) protogo.Response {
+	stub.Log("===Key History Iter START===")
+	args := stub.GetArgs()
+	key := string(args["key"])
+	field := string(args["field"])
+
+	iter, err := stub.NewHistoryKvIterForKey(key, field)
+	if err != nil {
+		msg := "NewHistoryIterForKey failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+
+	stub.Log("===create iter success===")
+
+	count := 0
+	for iter.HasNext() {
+		stub.Log("HasNext")
+		count++
+		km, err := iter.Next()
+		if err != nil {
+			msg := "iterator failed to get the next element"
+			stub.Log(msg)
+			return shim.Error(msg)
+		}
+
+		type KeyModification struct {
+			Key         string
+			Field       string
+			Value       []byte
+			TxId        string
+			BlockHeight int
+			IsDelete    bool
+			Timestamp   string
+		}
+
+		stub.Log(fmt.Sprintf("=== Data History [%d] Info:", count))
+		stub.Log(fmt.Sprintf("=== Key: [%s]", km.Key))
+		stub.Log(fmt.Sprintf("=== Field: [%s]", km.Field))
+		stub.Log(fmt.Sprintf("=== Value: [%s]", km.Value))
+		stub.Log(fmt.Sprintf("=== TxId: [%s]", km.TxId))
+		stub.Log(fmt.Sprintf("=== BlockHeight: [%d]", km.BlockHeight))
+		stub.Log(fmt.Sprintf("=== IsDelete: [%t]", km.IsDelete))
+		stub.Log(fmt.Sprintf("=== Timestamp: [%s]", km.Timestamp))
+	}
+
+	closed, err := iter.Close()
+	if !closed || err != nil {
+		msg := fmt.Sprintf("iterator close failed, %s", err.Error())
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+	stub.Log("===iter close success===")
+
+	stub.Log("===Key History Iter END===")
+
+	return shim.Success([]byte("get key history successfully"))
 }
 
 func (t *TestContract) display() protogo.Response {
@@ -225,7 +289,7 @@ func (t *TestContract) callSelf(stub shim.CMStubInterface) protogo.Response {
 
 	stub.Log("testing call self")
 
-	contractName := "contract_test01"
+	contractName := "contract_test02"
 	contractVersion := "v1.0.0"
 
 	crossContractArgs := make(map[string][]byte)
@@ -245,7 +309,6 @@ func (t *TestContract) callSelf(stub shim.CMStubInterface) protogo.Response {
 	| ey1   | field3  | val   |
 	| key2  | field1  | val   |
 	| key3  | field2  | val   |
-	| key33 | field2  | val   |
 	| key33 | field2  | val   |
 	| key4  | field3  | val   |
 */
@@ -288,7 +351,6 @@ func (t *TestContract) constructData(stub shim.CMStubInterface) protogo.Response
 	| ey1   | field3  | val   |
 	| key2  | field1  | val   |
 	| key3  | field2  | val   |
-	| key33 | field2  | val   |
 	| key33 | field2  | val   |
 	| key4  | field3  | val   |
 */

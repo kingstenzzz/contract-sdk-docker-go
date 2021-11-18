@@ -17,6 +17,9 @@ import (
 	"go.uber.org/zap"
 )
 
+type ECKeyType = string
+type Bool int32
+
 const (
 	MapSize = 8
 	// special parameters passed to contract
@@ -29,6 +32,27 @@ const (
 	ContractParamBlockHeight  = "__block_height__"
 	ContractParamTxId         = "__tx_id__"
 	ContractParamTxTimeStamp  = "__tx_time_stamp__"
+
+	EC_KEY_TYPE_KEY          ECKeyType = "key"
+	EC_KEY_TYPE_FIELD        ECKeyType = "field"
+	EC_KEY_TYPE_VALUE        ECKeyType = "value"
+	EC_KEY_TYPE_TX_ID        ECKeyType = "txId"
+	EC_KEY_TYPE_BLOCK_HEITHT ECKeyType = "blockHeight"
+	EC_KEY_TYPE_IS_DELETE    ECKeyType = "isDelete"
+	EC_KEY_TYPE_TIMESTAMP    ECKeyType = "timestamp"
+
+	FuncKvIteratorCreate    = "createKvIterator"
+	FuncKvPreIteratorCreate = "createKvPreIterator"
+	FuncKvIteratorHasNext   = "kvIteratorHasNext"
+	FuncKvIteratorNext      = "kvIteratorNext"
+	FuncKvIteratorClose     = "kvIteratorClose"
+
+	FuncKeyHistoryIterHasNext = "keyHistoryIterHasNext"
+	FuncKeyHistoryIterNext    = "keyHistoryIterNext"
+	FuncKeyHistoryIterClose   = "keyHistoryIterClose"
+
+	BoolTrue  Bool = 1
+	BoolFalse Bool = 0
 )
 
 type CMStub struct {
@@ -429,14 +453,6 @@ func (s *CMStub) NewIteratorPrefixWithKey(key string) (ResultSetKV, error) {
 	return s.NewIteratorPrefixWithKeyField(key, "")
 }
 
-const (
-	FuncKvIteratorCreate    = "createKvIterator"
-	FuncKvPreIteratorCreate = "createKvPreIterator"
-	FuncKvIteratorHasNext   = "kvIteratorHasNext"
-	FuncKvIteratorNext      = "kvIteratorNext"
-	FuncKvIteratorClose     = "kvIteratorClose"
-)
-
 func (s *CMStub) newIterator(iteratorFuncName, startKey string, startField string, limitKey string, limitField string) (
 	ResultSetKV, error) {
 
@@ -479,6 +495,49 @@ func (s *CMStub) newIterator(iteratorFuncName, startKey string, startField strin
 
 	return &ResultSetKvImpl{s: s, index: index}, nil
 
+}
+
+func (s *CMStub) NewHistoryKvIterForKey(key, field string) (KeyHistoryKvIter, error) {
+	responseCh := make(chan *protogo.DMSMessage, 1)
+	writeMap := s.GetWriteMap()
+	wMapBytes, err := json.Marshal(writeMap)
+	if err != nil {
+		return nil, err
+	}
+
+	createHistoryKvIterKey := func() []byte {
+		str :=
+			s.Handler.contractName + "#" +
+				key + "#" +
+				field + "#" +
+				string(wMapBytes)
+		return []byte(str)
+	}()
+
+	// reset writeMap
+	s.writeMap = make(map[string][]byte, MapSize)
+
+	_ = s.Handler.SendCreateKeyHistoryKvIterReq(createHistoryKvIterKey, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return nil, errors.New(result.Message)
+	}
+
+	value := result.Payload
+
+	index, err := bytehelper.BytesToInt(value)
+	if err != nil {
+		return nil, fmt.Errorf("get history iterator index failed, %s", err.Error())
+	}
+
+	return &KeyHistoryKvIterImpl{
+		key:   key,
+		field: field,
+		index: index,
+		s:     s,
+	}, nil
 }
 
 // ResultSetKvImpl iterator query result KVdb
@@ -560,9 +619,9 @@ func (r *ResultSetKvImpl) NextRow() (*serialize.EasyCodec, error) {
 	value := payload[2]
 
 	ec := serialize.NewEasyCodec()
-	ec.AddString("key", key)
-	ec.AddString("field", field)
-	ec.AddBytes("value", []byte(value))
+	ec.AddString(EC_KEY_TYPE_KEY, key)
+	ec.AddString(EC_KEY_TYPE_FIELD, field)
+	ec.AddBytes(EC_KEY_TYPE_VALUE, []byte(value))
 
 	return ec, nil
 }
@@ -572,9 +631,161 @@ func (r *ResultSetKvImpl) Next() (string, string, []byte, error) {
 	if err != nil {
 		return "", "", nil, err
 	}
-	key, _ := ec.GetString("key")
-	field, _ := ec.GetString("field")
-	v, _ := ec.GetBytes("value")
+	key, _ := ec.GetString(EC_KEY_TYPE_KEY)
+	field, _ := ec.GetString(EC_KEY_TYPE_FIELD)
+	v, _ := ec.GetBytes(EC_KEY_TYPE_VALUE)
 
 	return key, field, v, nil
+}
+
+type KeyHistoryKvIterImpl struct {
+	s *CMStub
+
+	key   string
+	field string
+	index int32
+}
+
+func (k *KeyHistoryKvIterImpl) HasNext() bool {
+
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	hasNextKey := func() []byte {
+		str := FuncKeyHistoryIterHasNext + "#" + string(bytehelper.IntToBytes(k.index))
+		return []byte(str)
+	}()
+
+	_ = k.s.Handler.SendConsumeKeyHistoryKvIterReq(hasNextKey, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return false
+	}
+
+	has, err := bytehelper.BytesToInt(result.Payload)
+	if err != nil {
+		return false
+	}
+
+	if Bool(has) == BoolFalse {
+		return false
+	}
+
+	return true
+}
+
+func (k *KeyHistoryKvIterImpl) NextRow() (*serialize.EasyCodec, error) {
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	nextRowKey := func() []byte {
+		str := FuncKeyHistoryIterNext + "#" + string(bytehelper.IntToBytes(k.index))
+		return []byte(str)
+	}()
+
+	_ = k.s.Handler.SendConsumeKeyHistoryKvIterReq(nextRowKey, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return nil, errors.New(result.Message)
+	}
+
+	/*
+		| index | desc        |
+		| ---   | ---         |
+		| 0     | txId        |
+		| 1     | blockHeight |
+		| 2     | value       |
+		| 3     | isDelete    |
+		| 4     | timestamp   |
+	*/
+	payload := strings.Split(string(result.Payload), "#")
+	txId := payload[0]
+	blockHeightStr := payload[1]
+	value := payload[2]
+	isDeleteStr := payload[3]
+	timestamp := payload[4]
+
+	ec := serialize.NewEasyCodec()
+	ec.AddBytes(EC_KEY_TYPE_VALUE, []byte(value))
+	ec.AddString(EC_KEY_TYPE_TX_ID, txId)
+
+	blockHeight, err := bytehelper.BytesToInt([]byte(blockHeightStr))
+	if err != nil {
+		return nil, err
+	}
+	ec.AddInt32(EC_KEY_TYPE_BLOCK_HEITHT, blockHeight)
+
+	ec.AddString(EC_KEY_TYPE_TIMESTAMP, timestamp)
+
+	isDelete, err := bytehelper.BytesToInt([]byte(isDeleteStr))
+	if err != nil {
+		return nil, err
+	}
+	ec.AddInt32(EC_KEY_TYPE_IS_DELETE, isDelete)
+
+	ec.AddString(EC_KEY_TYPE_KEY, k.key)
+	ec.AddString(EC_KEY_TYPE_FIELD, k.field)
+
+	return ec, nil
+}
+
+func (k *KeyHistoryKvIterImpl) Close() (bool, error) {
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	closeKey := func() []byte {
+		str := FuncKeyHistoryIterClose + "#" + string(bytehelper.IntToBytes(k.index))
+		return []byte(str)
+	}()
+
+	_ = k.s.Handler.SendConsumeKeyHistoryKvIterReq(closeKey, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return false, errors.New(result.Message)
+	} else if result.ResultCode == protocol.ContractSdkSignalResultSuccess {
+		return true, nil
+	}
+
+	return true, nil
+}
+
+func (k *KeyHistoryKvIterImpl) Next() (*KeyModification, error) {
+	ec, err := k.NextRow()
+	if err != nil {
+		return nil, err
+	}
+
+	value, _ := ec.GetBytes(EC_KEY_TYPE_VALUE)
+	txId, _ := ec.GetString(EC_KEY_TYPE_TX_ID)
+	blockHeight, _ := ec.GetInt32(EC_KEY_TYPE_BLOCK_HEITHT)
+	isDeleteBool, _ := ec.GetInt32(EC_KEY_TYPE_IS_DELETE)
+	isDelete := false
+	if Bool(isDeleteBool) == BoolTrue {
+		isDelete = true
+	}
+
+	timestamp, _ := ec.GetString(EC_KEY_TYPE_TIMESTAMP)
+
+	return &KeyModification{
+		Key:         k.key,
+		Field:       k.field,
+		Value:       value,
+		TxId:        txId,
+		BlockHeight: int(blockHeight),
+		IsDelete:    isDelete,
+		Timestamp:   timestamp,
+	}, nil
+}
+
+type KeyModification struct {
+	Key         string
+	Field       string
+	Value       []byte
+	TxId        string
+	BlockHeight int
+	IsDelete    bool
+	Timestamp   string
 }

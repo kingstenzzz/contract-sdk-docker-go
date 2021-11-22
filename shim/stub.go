@@ -33,6 +33,7 @@ const (
 	ContractParamTxId         = "__tx_id__"
 	ContractParamTxTimeStamp  = "__tx_time_stamp__"
 
+	// common easyCodec key
 	EC_KEY_TYPE_KEY          ECKeyType = "key"
 	EC_KEY_TYPE_FIELD        ECKeyType = "field"
 	EC_KEY_TYPE_VALUE        ECKeyType = "value"
@@ -41,16 +42,19 @@ const (
 	EC_KEY_TYPE_IS_DELETE    ECKeyType = "isDelete"
 	EC_KEY_TYPE_TIMESTAMP    ECKeyType = "timestamp"
 
+	// stateKvIterator method
 	FuncKvIteratorCreate    = "createKvIterator"
 	FuncKvPreIteratorCreate = "createKvPreIterator"
 	FuncKvIteratorHasNext   = "kvIteratorHasNext"
 	FuncKvIteratorNext      = "kvIteratorNext"
 	FuncKvIteratorClose     = "kvIteratorClose"
 
+	// keyHistoryKvIterator method
 	FuncKeyHistoryIterHasNext = "keyHistoryIterHasNext"
 	FuncKeyHistoryIterNext    = "keyHistoryIterNext"
 	FuncKeyHistoryIterClose   = "keyHistoryIterClose"
 
+	// int32 representation of bool
 	BoolTrue  Bool = 1
 	BoolFalse Bool = 0
 )

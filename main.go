@@ -355,6 +355,33 @@ func (t *TestContract) constructData(stub shim.CMStubInterface) protogo.Response
 	| key4  | field3  | val   |
 */
 func (t *TestContract) kvIterator(stub shim.CMStubInterface) protogo.Response {
+	stub.Log("===construct START===")
+	dataList := []struct {
+		key   string
+		field string
+		value string
+	}{
+		{key: "key1", field: "field1", value: "val"},
+		{key: "key1", field: "field2", value: "val"},
+		{key: "key1", field: "field23", value: "val"},
+		{key: "key1", field: "field3", value: "val"},
+		{key: "key2", field: "field1", value: "val"},
+		{key: "key3", field: "field2", value: "val"},
+		{key: "key33", field: "field2", value: "val"},
+		{key: "key33", field: "field2", value: "val"},
+		{key: "key4", field: "field3", value: "val"},
+	}
+
+	for _, data := range dataList {
+		err := stub.PutState(data.key, data.field, data.value)
+		if err != nil {
+			msg := fmt.Sprintf("constructData failed, %s", err.Error())
+			stub.Log(msg)
+			return shim.Error(msg)
+		}
+	}
+	stub.Log("===construct END===")
+
 	stub.Log("===kvIterator START===")
 	iteratorList := make([]shim.ResultSetKV, 4)
 

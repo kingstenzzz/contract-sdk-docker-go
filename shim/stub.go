@@ -544,6 +544,20 @@ func (s *CMStub) NewHistoryKvIterForKey(key, field string) (KeyHistoryKvIter, er
 	}, nil
 }
 
+func (s *CMStub) GetSenderAddr() (string, error) {
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	_ = s.Handler.SendGetSenderAddrReq(nil, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return "", errors.New(result.Message)
+	}
+
+	return string(result.Payload), nil
+}
+
 // ResultSetKvImpl iterator query result KVdb
 type ResultSetKvImpl struct {
 	s *CMStub

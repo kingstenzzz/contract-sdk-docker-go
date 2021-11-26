@@ -62,10 +62,28 @@ func (t *TestContract) InvokeContract(stub shim.CMStubInterface) protogo.Respons
 	case "key_history_kv_iter":
 		return t.keyHistoryIter(stub)
 
+	// getSenderAddress
+	case "get_sender_address":
+		return t.GetSenderAddrTest(stub)
+
 	default:
 		msg := fmt.Sprintf("unknown method")
 		return shim.Error(msg)
 	}
+}
+
+func (t *TestContract) GetSenderAddrTest(stub shim.CMStubInterface) protogo.Response {
+	senderAddr, err := stub.GetSenderAddr()
+	if err != nil {
+		msg := "GetSenderAddr failed"
+		stub.Log(msg)
+		return shim.Error(msg)
+	}
+
+	l := len([]byte(senderAddr))
+	msg := fmt.Sprintf("=== sender address: [%s] len: %d===", senderAddr, l)
+	stub.Log(msg)
+	return shim.Success([]byte(senderAddr))
 }
 
 func (t *TestContract) keyHistoryIter(stub shim.CMStubInterface) protogo.Response {
@@ -92,16 +110,6 @@ func (t *TestContract) keyHistoryIter(stub shim.CMStubInterface) protogo.Respons
 			msg := "iterator failed to get the next element"
 			stub.Log(msg)
 			return shim.Error(msg)
-		}
-
-		type KeyModification struct {
-			Key         string
-			Field       string
-			Value       []byte
-			TxId        string
-			BlockHeight int
-			IsDelete    bool
-			Timestamp   string
 		}
 
 		stub.Log(fmt.Sprintf("=== Data History [%d] Info:", count))
@@ -289,7 +297,7 @@ func (t *TestContract) callSelf(stub shim.CMStubInterface) protogo.Response {
 
 	stub.Log("testing call self")
 
-	contractName := "contract_test02"
+	contractName := "contract_test03"
 	contractVersion := "v1.0.0"
 
 	crossContractArgs := make(map[string][]byte)

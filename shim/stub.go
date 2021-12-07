@@ -33,6 +33,7 @@ const (
 	ContractParamTxId         = "__tx_id__"
 	ContractParamTxTimeStamp  = "__tx_time_stamp__"
 
+	// common easyCodec key
 	EC_KEY_TYPE_KEY          ECKeyType = "key"
 	EC_KEY_TYPE_FIELD        ECKeyType = "field"
 	EC_KEY_TYPE_VALUE        ECKeyType = "value"
@@ -41,16 +42,19 @@ const (
 	EC_KEY_TYPE_IS_DELETE    ECKeyType = "isDelete"
 	EC_KEY_TYPE_TIMESTAMP    ECKeyType = "timestamp"
 
+	// stateKvIterator method
 	FuncKvIteratorCreate    = "createKvIterator"
 	FuncKvPreIteratorCreate = "createKvPreIterator"
 	FuncKvIteratorHasNext   = "kvIteratorHasNext"
 	FuncKvIteratorNext      = "kvIteratorNext"
 	FuncKvIteratorClose     = "kvIteratorClose"
 
+	// keyHistoryKvIterator method
 	FuncKeyHistoryIterHasNext = "keyHistoryIterHasNext"
 	FuncKeyHistoryIterNext    = "keyHistoryIterNext"
 	FuncKeyHistoryIterClose   = "keyHistoryIterClose"
 
+	// int32 representation of bool
 	BoolTrue  Bool = 1
 	BoolFalse Bool = 0
 )
@@ -538,6 +542,20 @@ func (s *CMStub) NewHistoryKvIterForKey(key, field string) (KeyHistoryKvIter, er
 		index: index,
 		s:     s,
 	}, nil
+}
+
+func (s *CMStub) GetSenderAddr() (string, error) {
+	responseCh := make(chan *protogo.DMSMessage, 1)
+
+	_ = s.Handler.SendGetSenderAddrReq(nil, responseCh)
+
+	result := <-responseCh
+
+	if result.ResultCode == protocol.ContractSdkSignalResultFail {
+		return "", errors.New(result.Message)
+	}
+
+	return string(result.Payload), nil
 }
 
 // ResultSetKvImpl iterator query result KVdb

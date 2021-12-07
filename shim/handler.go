@@ -134,6 +134,8 @@ func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) 
 		return h.handleResponse(readyMsg)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE:
 		return h.handleResponse(readyMsg)
+	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_RESPONSE:
+		return h.handleResponse(readyMsg)
 	}
 	return nil
 }
@@ -302,6 +304,19 @@ func (h *Handler) SendConsumeKeyHistoryKvIterReq(key []byte, responseCh chan *pr
 	h.responseCh = responseCh
 
 	return h.SendMessage(consumeKvIteratorReq)
+}
+
+func (h *Handler) SendGetSenderAddrReq(key []byte, responseCh chan *protogo.DMSMessage) error {
+	getSenderAddrReq := &protogo.DMSMessage{
+		TxId:          h.txId,
+		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_REQUEST,
+		CurrentHeight: h.currentHeight,
+		Payload:       key,
+	}
+
+	h.responseCh = responseCh
+
+	return h.SendMessage(getSenderAddrReq)
 }
 
 func (h *Handler) handleCallContractResponse(contractResponseMsg *protogo.DMSMessage) error {

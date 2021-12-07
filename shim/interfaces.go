@@ -143,8 +143,16 @@ type CMStubInterface interface {
 	// @return1: 根据起始位置生成的迭代器
 	// @return2: 获取错误信息
 	NewIteratorPrefixWithKey(key string) (ResultSetKV, error)
-
+	// NewHistoryKvIterForKey query all historical data of key, field
+	// @param1: 查询历史的key
+	// @param2: 查询历史的field
+	// @return1: 根据key, field 生成的历史迭代器
+	// @return2: 获取错误信息
 	NewHistoryKvIterForKey(key, field string) (KeyHistoryKvIter, error)
+	// GetSenderAddr Get the address of the tx sender
+	// @return1: 交易发起方地址
+	// @return2: 获取错误信息
+	GetSenderAddr() (string, error)
 }
 
 // ResultSet iterator query result

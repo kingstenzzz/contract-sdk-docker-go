@@ -58,7 +58,7 @@ func newHandler(chaincodeStream ContactStream, cmContract CMContract, processNam
 func (h *Handler) SendMessage(msg *protogo.DMSMessage) error {
 	h.serialLock.Lock()
 	defer h.serialLock.Unlock()
-	Logger.Debugf("sandbox - send message: [%v]", msg)
+	Logger.Debugf("sandbox process [%s] tx [%s] - send message: [%v]", h.processName, msg.TxId, msg)
 
 	return h.contactStream.Send(msg)
 }
@@ -66,7 +66,7 @@ func (h *Handler) SendMessage(msg *protogo.DMSMessage) error {
 // handleMessage message handles loop for shim side of chaincode/peer stream.
 func (h *Handler) handleMessage(msg *protogo.DMSMessage, finishCh chan bool) error {
 
-	Logger.Debugf("sandbox - handle message: [%v]", msg)
+	Logger.Debugf("sandbox process [%s] tx [%s] - handle message: [%v]", h.processName, msg.TxId, msg)
 	var err error
 
 	switch h.state {

@@ -33,14 +33,16 @@ func Start(cmContract CMContract) error {
 	contractName := os.Args[2]
 	contractVersion := os.Args[3]
 
-	Logger = logger.NewDockerLogger("[Sandbox]", "INFO")
-	Logger.Debugf("loglevel: %s", os.Args[2])
+	Logger = logger.NewDockerLogger("[Sandbox]", "DEBUG")
+	Logger.Debugf("loglevel: %s", os.Args[4])
 
 	// get sandbox stream
 	stream, err := GetClientStream(sockAddress)
 	if err != nil {
+		Logger.Errorf("sandbox process [%s] fail to establish stream", processName)
 		return err
 	}
+	Logger.Debugf("sandbox process [%s] established the stream", processName)
 
 	err = startClientChat(stream, cmContract, processName, contractName, contractVersion)
 	if err != nil {
@@ -55,6 +57,7 @@ func startClientChat(stream ClientStream, contract CMContract, processName, cont
 	defer func(stream ClientStream) {
 		err := stream.CloseSend()
 		if err != nil {
+			Logger.Errorf("sandbox process [%s] close send err [%s]", processName)
 			return
 		}
 	}(stream)
@@ -62,7 +65,7 @@ func startClientChat(stream ClientStream, contract CMContract, processName, cont
 }
 
 func chatWithManager(stream ClientStream, userContract CMContract, processName, contractName, contractVersion string) error {
-	Logger.Debugf("sandbox - chat with manager")
+	Logger.Debugf("sandbox process [%s] - chat with manager", processName)
 
 	// Create the shim handler responsible for all control logic
 	handler := newHandler(stream, userContract, processName, contractName, contractVersion)
@@ -90,6 +93,7 @@ func chatWithManager(stream ClientStream, userContract CMContract, processName, 
 	receiveMessage := func() {
 		in, err := stream.Recv()
 		if err == io.EOF {
+			Logger.Errorf("sandbox process [%s] - recv eof", processName)
 			return
 		}
 		msgAvail <- &recvMsg{in, err}
@@ -113,7 +117,7 @@ func chatWithManager(stream ClientStream, userContract CMContract, processName, 
 			default:
 				err := handler.handleMessage(rmsg.msg, fCh)
 				if err != nil {
-					err = fmt.Errorf("error handling message: %s", err)
+					err = fmt.Errorf("sandbox process [%s] error handling message: %s", processName, err)
 					return err
 				}
 			}
@@ -123,6 +127,7 @@ func chatWithManager(stream ClientStream, userContract CMContract, processName, 
 		case sendErr := <-errc:
 			if sendErr != nil {
 				err := fmt.Errorf("error sending: %s", sendErr)
+				Logger.Errorf("\"sandbox process [%s] - err in send [%s]", processName, err)
 				return err
 			}
 

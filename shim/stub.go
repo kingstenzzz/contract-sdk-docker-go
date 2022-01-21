@@ -401,6 +401,7 @@ func (s *CMStub) CallContract(contractName, contractVersion string, args map[str
 		ContractParamSenderPk:     []byte(s.senderPk),
 		ContractParamBlockHeight:  []byte(s.blockHeight),
 		ContractParamTxId:         []byte(s.txId),
+		ContractParamTxTimeStamp:  []byte(s.txTimeStamp),
 	}
 
 	// add user defined args

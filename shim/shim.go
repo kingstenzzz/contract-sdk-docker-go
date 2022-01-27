@@ -33,7 +33,7 @@ func Start(cmContract CMContract) error {
 	contractName := os.Args[2]
 	contractVersion := os.Args[3]
 
-	Logger = logger.NewDockerLogger("[Sandbox]", "INFO")
+	Logger = logger.NewDockerLogger("[Sandbox]", "DEBUG")
 	Logger.Debugf("loglevel: %s", os.Args[4])
 
 	// get sandbox stream

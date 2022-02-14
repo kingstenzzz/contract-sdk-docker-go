@@ -391,6 +391,7 @@ func (s *CMStub) Log(message string) {
 
 func (s *CMStub) CallContract(contractName, contractVersion string, args map[string][]byte) protogo.Response {
 	Logger.Debugf("[%s] call contract start, called contract name: %s", s.Handler.currentTxId, contractName)
+	defer Logger.Debugf("[%s] call contract finished, called contract name: %s", s.Handler.currentTxId, contractName)
 	// get contract result from docker manager
 	responseCh := make(chan *protogo.DMSMessage, 1)
 
@@ -417,15 +418,35 @@ func (s *CMStub) CallContract(contractName, contractVersion string, args map[str
 		Args:            initialArgs,
 	}
 
-	callContractPayload, _ := proto.Marshal(callContractPayloadStruct)
+	constructErrorCallContractResponse := func(err error) protogo.Response {
+		return protogo.Response{
+			Status:  1,
+			Message: err.Error(),
+			Payload: nil,
+		}
+	}
 
-	_ = s.Handler.SendCallContract(callContractPayload, responseCh)
+	callContractPayload, err := proto.Marshal(callContractPayloadStruct)
+	if err != nil {
+		return constructErrorCallContractResponse(err)
+	}
+
+	err = s.Handler.SendCallContract(callContractPayload, responseCh)
+	if err != nil {
+		return constructErrorCallContractResponse(err)
+	}
 
 	result := <-responseCh
-	callContractResponsePayload := result.Payload
 
 	var contractResponse protogo.ContractResponse
-	_ = proto.Unmarshal(callContractResponsePayload, &contractResponse)
+	err = proto.Unmarshal(result.Payload, &contractResponse)
+	if err != nil {
+		return constructErrorCallContractResponse(err)
+	}
+
+	if contractResponse.Response.Status != 200 {
+		return *contractResponse.Response
+	}
 
 	// merge read write map
 	for key, value := range contractResponse.ReadMap {
@@ -439,8 +460,6 @@ func (s *CMStub) CallContract(contractName, contractVersion string, args map[str
 	for _, event := range contractResponse.Events {
 		s.events = append(s.events, event)
 	}
-
-	Logger.Debugf("[%s] call contract finished, called contract name: %s", s.Handler.currentTxId, contractName)
 
 	// return result
 	return *contractResponse.Response

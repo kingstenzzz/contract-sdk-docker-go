@@ -145,7 +145,7 @@ func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) 
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE_RESPONSE:
 		return h.handleResponse(readyMsg)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_CALL_CONTRACT_RESPONSE:
-		return h.handleCallContractResponse(readyMsg)
+		return h.handleResponse(readyMsg)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED:
 		return h.handleCompleted(finishCh)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_CREATE_KV_ITERATOR_RESPONSE:
@@ -168,6 +168,7 @@ func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 	if err != nil {
 		return err
 	}
+	defer h.resetTx()
 
 	// deal with parameters
 	var input protogo.Input
@@ -202,7 +203,6 @@ func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 		Payload:       responseWithWriteMapPayload,
 	}
 
-	h.resetTx()
 	return h.SendMessage(completedMsg)
 
 }
@@ -213,6 +213,7 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 	if err != nil {
 		return err
 	}
+	defer h.resetTx()
 	// deal with parameters
 	var input protogo.Input
 	err = proto.Unmarshal(readyMsg.Payload, &input)
@@ -249,7 +250,6 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 		Payload:       contractResponsePayload,
 	}
 
-	h.resetTx()
 	return h.SendMessage(completedMsg)
 }
 
@@ -374,30 +374,30 @@ func (h *Handler) SendGetSenderAddrReq(key []byte, responseCh chan *protogo.DMSM
 	return h.SendMessage(getSenderAddrReq)
 }
 
-func (h *Handler) handleCallContractResponse(contractResponseMsg *protogo.DMSMessage) error {
-	var contractResponse protogo.ContractResponse
-	err := proto.Unmarshal(contractResponseMsg.Payload, &contractResponse)
-	if err != nil {
-		return err
-	}
-
-	// if called contract has error, send back error result directly
-	// docker manager will shut down current contract immediately
-	if contractResponse.Response.Status != 200 {
-		completedMsg := &protogo.DMSMessage{
-			TxId:          h.currentTxId,
-			Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED,
-			CurrentHeight: h.currentTxHeight,
-			Payload:       contractResponseMsg.Payload,
-		}
-
-		h.resetTx()
-		return h.SendMessage(completedMsg)
-	}
-
-	return h.handleResponse(contractResponseMsg)
-
-}
+//func (h *Handler) handleCallContractResponse(contractResponseMsg *protogo.DMSMessage) error {
+//	var contractResponse protogo.ContractResponse
+//	err := proto.Unmarshal(contractResponseMsg.Payload, &contractResponse)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// if called contract has error, send back error result directly
+//	// docker manager will shut down current contract immediately
+//	//if contractResponse.Response.Status != 200 {
+//	//	completedMsg := &protogo.DMSMessage{
+//	//		TxId:          h.currentTxId,
+//	//		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED,
+//	//		CurrentHeight: h.currentTxHeight,
+//	//		Payload:       contractResponseMsg.Payload,
+//	//	}
+//	//
+//	//	h.resetTx()
+//	//	return h.SendMessage(completedMsg)
+//	//}
+//
+//	return h.handleResponse(contractResponseMsg)
+//
+//}
 
 func (h *Handler) handleResponse(readyMsg *protogo.DMSMessage) error {
 	Logger.Debugf("handle response [%+v]", readyMsg)

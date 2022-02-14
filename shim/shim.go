@@ -46,6 +46,7 @@ func Start(cmContract CMContract) error {
 
 	err = startClientChat(stream, cmContract, processName, contractName, contractVersion)
 	if err != nil {
+		Logger.Errorf("sandbox process [%s] fail to chat with manager", processName)
 		return err
 	}
 	// wait to end

@@ -175,6 +175,6 @@ type ResultSetKV interface {
 
 type KeyHistoryKvIter interface {
 	ResultSet
-	// Next return txId, blockHeight, timestamp, value, isDelete, error
+	// Next return currentTxId, blockHeight, timestamp, value, isDelete, error
 	Next() (*KeyModification, error)
 }

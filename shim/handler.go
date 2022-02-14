@@ -1,6 +1,7 @@
 package shim
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -16,6 +17,12 @@ const (
 	ready state = "ready"
 )
 
+const (
+	empty = iota
+
+	occupied
+)
+
 type ContactStream interface {
 	Send(message *protogo.DMSMessage) error
 	Recv() (*protogo.DMSMessage, error)
@@ -27,7 +34,7 @@ type ClientStream interface {
 }
 
 type Handler struct {
-	serialLock      sync.Mutex
+	handlerLock     sync.Mutex
 	contactStream   ContactStream
 	cmContract      CMContract
 	state           state
@@ -37,8 +44,9 @@ type Handler struct {
 	responseCh      chan *protogo.DMSMessage
 
 	// related to each tx
-	txId          string
-	currentHeight uint32
+	currentTxId     string
+	currentTxState  int
+	currentTxHeight uint32
 }
 
 // NewChaincodeHandler returns a new instance of the shim side handler.
@@ -51,13 +59,17 @@ func newHandler(chaincodeStream ContactStream, cmContract CMContract, processNam
 		contractName:    contractName,
 		contractVersion: contractVersion,
 		responseCh:      nil,
+
+		currentTxId:     "",
+		currentTxState:  empty,
+		currentTxHeight: 0,
 	}
 }
 
 // SendMessage Send on the gRPC client.
 func (h *Handler) SendMessage(msg *protogo.DMSMessage) error {
-	h.serialLock.Lock()
-	defer h.serialLock.Unlock()
+	h.handlerLock.Lock()
+	defer h.handlerLock.Unlock()
 	Logger.Debugf("sandbox process [%s] tx [%s] - send message: [%v]", h.processName, msg.TxId, msg)
 
 	return h.contactStream.Send(msg)
@@ -105,19 +117,29 @@ func (h *Handler) afterCreated() error {
 // ------------------------------------------
 
 func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) error {
+
+	// check new msg's TxId is equal to current TxId, if not equal, abandon this msg
+	// abandoned msg is not error
+	if len(h.currentTxId) > 0 && h.currentTxId != readyMsg.TxId {
+		errMsg := fmt.Sprintf("abandon msg [%+v] because handler is handling existing tx [%s]\n",
+			readyMsg, h.currentTxId)
+		Logger.Error(errMsg)
+		return nil
+	}
+
 	switch readyMsg.Type {
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_INIT:
 		go func() {
 			err := h.handleInit(readyMsg)
 			if err != nil {
-				Logger.Errorf("fail to handle init")
+				Logger.Errorf("fail to handle init [%s]", err)
 			}
 		}()
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_INVOKE:
 		go func() {
 			err := h.handleInvoke(readyMsg)
 			if err != nil {
-				Logger.Errorf("fail to handle invoke")
+				Logger.Errorf("fail to handle invoke [%s]", err)
 			}
 		}()
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE_RESPONSE:
@@ -142,11 +164,14 @@ func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) 
 
 func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 
-	h.updateTx(readyMsg)
+	err := h.updateNewTx(readyMsg)
+	if err != nil {
+		return err
+	}
 
 	// deal with parameters
 	var input protogo.Input
-	err := proto.UnmarshalMerge(readyMsg.Payload, &input)
+	err = proto.UnmarshalMerge(readyMsg.Payload, &input)
 	if err != nil {
 		return err
 	}
@@ -171,21 +196,26 @@ func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 		return err
 	}
 	completedMsg := &protogo.DMSMessage{
-		TxId:          h.txId,
+		TxId:          h.currentTxId,
 		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED,
-		CurrentHeight: h.currentHeight,
+		CurrentHeight: h.currentTxHeight,
 		Payload:       responseWithWriteMapPayload,
 	}
 
+	h.resetTx()
 	return h.SendMessage(completedMsg)
 
 }
 
 func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
-	h.updateTx(readyMsg)
+
+	err := h.updateNewTx(readyMsg)
+	if err != nil {
+		return err
+	}
 	// deal with parameters
 	var input protogo.Input
-	err := proto.UnmarshalMerge(readyMsg.Payload, &input)
+	err = proto.UnmarshalMerge(readyMsg.Payload, &input)
 	args := input.Args
 
 	stub := NewCMStub(h, args, h.contractName, h.contractVersion)
@@ -202,7 +232,7 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 	}
 
 	// current height > 0, also send read map
-	if h.currentHeight > 0 {
+	if h.currentTxHeight > 0 {
 		contractResponse.ReadMap = stub.GetReadMap()
 	}
 
@@ -213,26 +243,47 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 	}
 
 	completedMsg := &protogo.DMSMessage{
-		TxId:          h.txId,
+		TxId:          h.currentTxId,
 		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED,
-		CurrentHeight: h.currentHeight,
+		CurrentHeight: h.currentTxHeight,
 		Payload:       contractResponsePayload,
 	}
 
+	h.resetTx()
 	return h.SendMessage(completedMsg)
-
 }
 
-func (h *Handler) updateTx(readyMsg *protogo.DMSMessage) {
-	h.txId = readyMsg.TxId
-	h.currentHeight = readyMsg.CurrentHeight
+func (h *Handler) updateNewTx(readyMsg *protogo.DMSMessage) error {
+	h.handlerLock.Lock()
+	defer h.handlerLock.Unlock()
+
+	if h.currentTxState == occupied && len(h.currentTxId) > 0 {
+		errMsg := fmt.Sprintf("abandon new tx [%s] because handler is handling existing tx [%s]",
+			readyMsg.TxId, h.currentTxId)
+		return errors.New(errMsg)
+	}
+
+	h.currentTxId = readyMsg.TxId
+	h.currentTxState = occupied
+	h.currentTxHeight = readyMsg.CurrentHeight
+
+	return nil
+}
+
+func (h *Handler) resetTx() {
+	h.handlerLock.Lock()
+	defer h.handlerLock.Unlock()
+
+	h.currentTxId = ""
+	h.currentTxState = empty
+	h.currentTxHeight = 0
 }
 
 func (h *Handler) SendGetStateReq(key []byte, responseCh chan *protogo.DMSMessage) error {
 	getStateMsg := &protogo.DMSMessage{
-		TxId:          h.txId,
+		TxId:          h.currentTxId,
 		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_STATE_REQUEST,
-		CurrentHeight: h.currentHeight,
+		CurrentHeight: h.currentTxHeight,
 		Payload:       key,
 	}
 
@@ -243,9 +294,9 @@ func (h *Handler) SendGetStateReq(key []byte, responseCh chan *protogo.DMSMessag
 
 func (h *Handler) SendCallContract(callContractPayload []byte, responseCh chan *protogo.DMSMessage) error {
 	callContractMsg := &protogo.DMSMessage{
-		TxId:          h.txId,
+		TxId:          h.currentTxId,
 		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_CALL_CONTRACT_REQUEST,
-		CurrentHeight: h.currentHeight,
+		CurrentHeight: h.currentTxHeight,
 		Payload:       callContractPayload,
 	}
 
@@ -256,9 +307,9 @@ func (h *Handler) SendCallContract(callContractPayload []byte, responseCh chan *
 
 func (h *Handler) SendCreateKvIteratorReq(key []byte, responseCh chan *protogo.DMSMessage) error {
 	createKvIteratorReq := &protogo.DMSMessage{
-		TxId:          h.txId,
+		TxId:          h.currentTxId,
 		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_CREATE_KV_ITERATOR_REQUEST,
-		CurrentHeight: h.currentHeight,
+		CurrentHeight: h.currentTxHeight,
 		Payload:       key,
 	}
 
@@ -269,9 +320,9 @@ func (h *Handler) SendCreateKvIteratorReq(key []byte, responseCh chan *protogo.D
 
 func (h *Handler) SendConsumeKvIteratorReq(key []byte, responseCh chan *protogo.DMSMessage) error {
 	consumeKvIteratorReq := &protogo.DMSMessage{
-		TxId:          h.txId,
+		TxId:          h.currentTxId,
 		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KV_ITERATOR_REQUEST,
-		CurrentHeight: h.currentHeight,
+		CurrentHeight: h.currentTxHeight,
 		Payload:       key,
 	}
 
@@ -282,9 +333,9 @@ func (h *Handler) SendConsumeKvIteratorReq(key []byte, responseCh chan *protogo.
 
 func (h *Handler) SendCreateKeyHistoryKvIterReq(key []byte, responseCh chan *protogo.DMSMessage) error {
 	createKeyHistoryKvIterReq := &protogo.DMSMessage{
-		TxId:          h.txId,
+		TxId:          h.currentTxId,
 		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_CREATE_KEY_HISTORY_ITER_REQUEST,
-		CurrentHeight: h.currentHeight,
+		CurrentHeight: h.currentTxHeight,
 		Payload:       key,
 	}
 
@@ -295,9 +346,9 @@ func (h *Handler) SendCreateKeyHistoryKvIterReq(key []byte, responseCh chan *pro
 
 func (h *Handler) SendConsumeKeyHistoryKvIterReq(key []byte, responseCh chan *protogo.DMSMessage) error {
 	consumeKvIteratorReq := &protogo.DMSMessage{
-		TxId:          h.txId,
+		TxId:          h.currentTxId,
 		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KEY_HISTORY_ITER_REQUEST,
-		CurrentHeight: h.currentHeight,
+		CurrentHeight: h.currentTxHeight,
 		Payload:       key,
 	}
 
@@ -308,9 +359,9 @@ func (h *Handler) SendConsumeKeyHistoryKvIterReq(key []byte, responseCh chan *pr
 
 func (h *Handler) SendGetSenderAddrReq(key []byte, responseCh chan *protogo.DMSMessage) error {
 	getSenderAddrReq := &protogo.DMSMessage{
-		TxId:          h.txId,
+		TxId:          h.currentTxId,
 		Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_REQUEST,
-		CurrentHeight: h.currentHeight,
+		CurrentHeight: h.currentTxHeight,
 		Payload:       key,
 	}
 
@@ -321,23 +372,23 @@ func (h *Handler) SendGetSenderAddrReq(key []byte, responseCh chan *protogo.DMSM
 
 func (h *Handler) handleCallContractResponse(contractResponseMsg *protogo.DMSMessage) error {
 	var contractResponse protogo.ContractResponse
-	_ = proto.Unmarshal(contractResponseMsg.Payload, &contractResponse)
+	err := proto.Unmarshal(contractResponseMsg.Payload, &contractResponse)
+	if err != nil {
+		return err
+	}
 
 	// if called contract has error, send back error result directly
 	// docker manager will shut down current contract immediately
 	if contractResponse.Response.Status != 200 {
 		completedMsg := &protogo.DMSMessage{
-			TxId:          h.txId,
+			TxId:          h.currentTxId,
 			Type:          protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED,
-			CurrentHeight: h.currentHeight,
+			CurrentHeight: h.currentTxHeight,
 			Payload:       contractResponseMsg.Payload,
 		}
 
 		return h.SendMessage(completedMsg)
 	}
-
-	// todo change handle response chan: split to two chan: one for get state byte,
-	// todo another is for called contract
 
 	return h.handleResponse(contractResponseMsg)
 

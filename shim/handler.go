@@ -257,6 +257,8 @@ func (h *Handler) updateNewTx(readyMsg *protogo.DMSMessage) error {
 	h.handlerLock.Lock()
 	defer h.handlerLock.Unlock()
 
+	Logger.Debugf("update new handler tx [%s]", readyMsg.TxId)
+
 	if h.currentTxState == occupied && len(h.currentTxId) > 0 {
 		errMsg := fmt.Sprintf("abandon new tx [%s] because handler is handling existing tx [%s]",
 			readyMsg.TxId, h.currentTxId)
@@ -273,6 +275,8 @@ func (h *Handler) updateNewTx(readyMsg *protogo.DMSMessage) error {
 func (h *Handler) resetTx() {
 	h.handlerLock.Lock()
 	defer h.handlerLock.Unlock()
+
+	Logger.Debugf("reset handler tx [%s]", h.currentTxId)
 
 	h.currentTxId = ""
 	h.currentTxState = empty
@@ -387,6 +391,7 @@ func (h *Handler) handleCallContractResponse(contractResponseMsg *protogo.DMSMes
 			Payload:       contractResponseMsg.Payload,
 		}
 
+		h.resetTx()
 		return h.SendMessage(completedMsg)
 	}
 

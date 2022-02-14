@@ -444,7 +444,7 @@ func (s *CMStub) CallContract(contractName, contractVersion string, args map[str
 		return constructErrorCallContractResponse(err)
 	}
 
-	if contractResponse.Response.Status != 200 {
+	if contractResponse.Response.Status != OK {
 		return *contractResponse.Response
 	}
 

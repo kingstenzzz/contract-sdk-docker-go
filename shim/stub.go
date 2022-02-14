@@ -127,7 +127,7 @@ func (s *CMStub) GetArgs() map[string][]byte {
 }
 
 func (s *CMStub) GetState(key, field string) (string, error) {
-	Logger.Debugf("get state for [%s#%s]", key, field)
+	Logger.Debugf("[%s] get state for key: %s, field: %s", s.Handler.txId, key, field)
 	// get from write set
 	if value, done := s.getFromWriteSet(key, field); done {
 		s.putIntoReadSet(key, field, value)
@@ -144,6 +144,8 @@ func (s *CMStub) GetState(key, field string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	Logger.Debugf("[%s] get state finished for key: %s, field: %s, value: %s", s.Handler.txId, key,
+		field, string(value))
 	return string(value), nil
 }
 
@@ -388,7 +390,7 @@ func (s *CMStub) Log(message string) {
 }
 
 func (s *CMStub) CallContract(contractName, contractVersion string, args map[string][]byte) protogo.Response {
-
+	Logger.Debugf("[%s] call contract start, called contract name: %s", s.Handler.txId, contractName)
 	// get contract result from docker manager
 	responseCh := make(chan *protogo.DMSMessage, 1)
 
@@ -437,6 +439,8 @@ func (s *CMStub) CallContract(contractName, contractVersion string, args map[str
 	for _, event := range contractResponse.Events {
 		s.events = append(s.events, event)
 	}
+
+	Logger.Debugf("[%s] call contract finished, called contract name: %s", s.Handler.txId, contractName)
 
 	// return result
 	return *contractResponse.Response

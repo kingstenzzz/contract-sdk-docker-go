@@ -171,7 +171,7 @@ func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 
 	// deal with parameters
 	var input protogo.Input
-	err = proto.UnmarshalMerge(readyMsg.Payload, &input)
+	err = proto.Unmarshal(readyMsg.Payload, &input)
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 	}
 	// deal with parameters
 	var input protogo.Input
-	err = proto.UnmarshalMerge(readyMsg.Payload, &input)
+	err = proto.Unmarshal(readyMsg.Payload, &input)
 	args := input.Args
 
 	stub := NewCMStub(h, args, h.contractName, h.contractVersion)

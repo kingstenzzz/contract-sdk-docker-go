@@ -22,7 +22,9 @@ type Bool int32
 
 const (
 	MapSize = 8
+
 	// special parameters passed to contract
+
 	ContractParamCreatorOrgId = "__creator_org_id__"
 	ContractParamCreatorRole  = "__creator_role__"
 	ContractParamCreatorPk    = "__creator_pk__"
@@ -34,6 +36,7 @@ const (
 	ContractParamTxTimeStamp  = "__tx_time_stamp__"
 
 	// common easyCodec key
+
 	EC_KEY_TYPE_KEY          ECKeyType = "key"
 	EC_KEY_TYPE_FIELD        ECKeyType = "field"
 	EC_KEY_TYPE_VALUE        ECKeyType = "value"
@@ -43,6 +46,7 @@ const (
 	EC_KEY_TYPE_TIMESTAMP    ECKeyType = "timestamp"
 
 	// stateKvIterator method
+
 	FuncKvIteratorCreate    = "createKvIterator"
 	FuncKvPreIteratorCreate = "createKvPreIterator"
 	FuncKvIteratorHasNext   = "kvIteratorHasNext"
@@ -50,11 +54,13 @@ const (
 	FuncKvIteratorClose     = "kvIteratorClose"
 
 	// keyHistoryKvIterator method
+
 	FuncKeyHistoryIterHasNext = "keyHistoryIterHasNext"
 	FuncKeyHistoryIterNext    = "keyHistoryIterNext"
 	FuncKeyHistoryIterClose   = "keyHistoryIterClose"
 
 	// int32 representation of bool
+
 	BoolTrue  Bool = 1
 	BoolFalse Bool = 0
 )
@@ -208,7 +214,10 @@ func (s *CMStub) getState(key, field string) ([]byte, error) {
 	responseCh := make(chan *protogo.DMSMessage, 1)
 
 	getStateKey := s.constructKey(key, field)
-	_ = s.Handler.SendGetStateReq([]byte(getStateKey), responseCh)
+	err := s.Handler.SendGetStateReq([]byte(getStateKey), responseCh)
+	if err != nil {
+		return nil, err
+	}
 
 	result := <-responseCh
 
@@ -391,7 +400,8 @@ func (s *CMStub) Log(message string) {
 
 func (s *CMStub) CallContract(contractName, contractVersion string, args map[string][]byte) protogo.Response {
 	Logger.Debugf("[%s] call contract start, called contract name: %s", s.Handler.currentTxId, contractName)
-	defer Logger.Debugf("[%s] call contract finished, called contract name: %s", s.Handler.currentTxId, contractName)
+	defer Logger.Debugf("[%s] call contract finished, called contract name: %s", s.Handler.currentTxId,
+		contractName)
 	// get contract result from docker manager
 	responseCh := make(chan *protogo.DMSMessage, 1)
 
@@ -481,7 +491,8 @@ func (s *CMStub) NewIteratorPrefixWithKey(key string) (ResultSetKV, error) {
 	return s.NewIteratorPrefixWithKeyField(key, "")
 }
 
-func (s *CMStub) newIterator(iteratorFuncName, startKey string, startField string, limitKey string, limitField string) (
+func (s *CMStub) newIterator(iteratorFuncName, startKey string, startField string, limitKey string,
+	limitField string) (
 	ResultSetKV, error) {
 
 	responseCh := make(chan *protogo.DMSMessage, 1)
@@ -506,7 +517,10 @@ func (s *CMStub) newIterator(iteratorFuncName, startKey string, startField strin
 	// reset writeMap
 	s.writeMap = make(map[string][]byte, MapSize)
 
-	_ = s.Handler.SendCreateKvIteratorReq(createKvIteratorKey, responseCh)
+	err = s.Handler.SendCreateKvIteratorReq(createKvIteratorKey, responseCh)
+	if err != nil {
+		return nil, err
+	}
 
 	result := <-responseCh
 
@@ -545,7 +559,10 @@ func (s *CMStub) NewHistoryKvIterForKey(key, field string) (KeyHistoryKvIter, er
 	// reset writeMap
 	s.writeMap = make(map[string][]byte, MapSize)
 
-	_ = s.Handler.SendCreateKeyHistoryKvIterReq(createHistoryKvIterKey, responseCh)
+	err = s.Handler.SendCreateKeyHistoryKvIterReq(createHistoryKvIterKey, responseCh)
+	if err != nil {
+		return nil, err
+	}
 
 	result := <-responseCh
 
@@ -571,7 +588,10 @@ func (s *CMStub) NewHistoryKvIterForKey(key, field string) (KeyHistoryKvIter, er
 func (s *CMStub) GetSenderAddr() (string, error) {
 	responseCh := make(chan *protogo.DMSMessage, 1)
 
-	_ = s.Handler.SendGetSenderAddrReq(nil, responseCh)
+	err := s.Handler.SendGetSenderAddrReq(nil, responseCh)
+	if err != nil {
+		return "", err
+	}
 
 	result := <-responseCh
 
@@ -598,7 +618,10 @@ func (r *ResultSetKvImpl) HasNext() bool {
 		return []byte(str)
 	}()
 
-	_ = r.s.Handler.SendConsumeKvIteratorReq(hasNextKey, responseCh)
+	err := r.s.Handler.SendConsumeKvIteratorReq(hasNextKey, responseCh)
+	if err != nil {
+		return false
+	}
 
 	result := <-responseCh
 
@@ -626,7 +649,10 @@ func (r *ResultSetKvImpl) Close() (bool, error) {
 		return []byte(str)
 	}()
 
-	_ = r.s.Handler.SendConsumeKvIteratorReq(closeKey, responseCh)
+	err := r.s.Handler.SendConsumeKvIteratorReq(closeKey, responseCh)
+	if err != nil {
+		return false, err
+	}
 
 	result := <-responseCh
 
@@ -647,7 +673,10 @@ func (r *ResultSetKvImpl) NextRow() (*serialize.EasyCodec, error) {
 		return []byte(str)
 	}()
 
-	_ = r.s.Handler.SendConsumeKvIteratorReq(nextRowKey, responseCh)
+	err := r.s.Handler.SendConsumeKvIteratorReq(nextRowKey, responseCh)
+	if err != nil {
+		return nil, err
+	}
 
 	result := <-responseCh
 
@@ -697,7 +726,10 @@ func (k *KeyHistoryKvIterImpl) HasNext() bool {
 		return []byte(str)
 	}()
 
-	_ = k.s.Handler.SendConsumeKeyHistoryKvIterReq(hasNextKey, responseCh)
+	err := k.s.Handler.SendConsumeKeyHistoryKvIterReq(hasNextKey, responseCh)
+	if err != nil {
+		return false
+	}
 
 	result := <-responseCh
 
@@ -725,7 +757,10 @@ func (k *KeyHistoryKvIterImpl) NextRow() (*serialize.EasyCodec, error) {
 		return []byte(str)
 	}()
 
-	_ = k.s.Handler.SendConsumeKeyHistoryKvIterReq(nextRowKey, responseCh)
+	err := k.s.Handler.SendConsumeKeyHistoryKvIterReq(nextRowKey, responseCh)
+	if err != nil {
+		return nil, err
+	}
 
 	result := <-responseCh
 
@@ -781,7 +816,10 @@ func (k *KeyHistoryKvIterImpl) Close() (bool, error) {
 		return []byte(str)
 	}()
 
-	_ = k.s.Handler.SendConsumeKeyHistoryKvIterReq(closeKey, responseCh)
+	err := k.s.Handler.SendConsumeKeyHistoryKvIterReq(closeKey, responseCh)
+	if err != nil {
+		return false, err
+	}
 
 	result := <-responseCh
 

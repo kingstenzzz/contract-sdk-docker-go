@@ -378,8 +378,6 @@ func (h *Handler) SendGetSenderAddrReq(key []byte, responseCh chan *protogo.DMSM
 func (h *Handler) handleResponse(readyMsg *protogo.DMSMessage) error {
 	Logger.Debugf("handle response [%+v]", readyMsg)
 	h.responseCh <- readyMsg
-	//close(h.responseCh)
-	//h.responseCh = nil
 	Logger.Debugf("close response channel [%+v]", readyMsg)
 	return nil
 }

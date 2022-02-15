@@ -467,9 +467,7 @@ func (s *CMStub) CallContract(contractName, contractVersion string, args map[str
 	}
 
 	// merge events
-	for _, event := range contractResponse.Events {
-		s.events = append(s.events, event)
-	}
+	s.events = append(s.events, contractResponse.Events...)
 
 	// return result
 	return *contractResponse.Response

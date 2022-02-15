@@ -17,6 +17,9 @@ const (
 	ready state = "ready"
 )
 
+// handler tx state:
+// when handler handle such tx, state is occupied
+// when handler doesn't handle tx, state is empty
 const (
 	empty = iota
 
@@ -216,6 +219,9 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 	// deal with parameters
 	var input protogo.Input
 	err = proto.Unmarshal(readyMsg.Payload, &input)
+	if err != nil {
+		return err
+	}
 	args := input.Args
 
 	stub := NewCMStub(h, args, h.contractName, h.contractVersion)

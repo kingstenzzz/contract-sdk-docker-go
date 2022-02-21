@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"log"
 
-	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
-	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim"
+	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo"
+	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/shim"
 )
 
 type RaffleContract struct {

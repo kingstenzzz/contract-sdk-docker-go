@@ -1,10 +1,18 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package demo
 
 import (
-	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
-	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim"
 	"fmt"
 	"log"
+
+	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo"
+	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/shim"
 )
 
 type Contract2 struct {

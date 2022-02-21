@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo";
+option go_package = "chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo";
 
 // manager as server - sandbox established a connection to the manager
 service DMSRpc {

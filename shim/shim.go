@@ -90,61 +90,82 @@ func chatWithManager(stream ClientStream, userContract CMContract, processName, 
 	}
 
 	// holds return values from gRPC Recv below
-	type recvMsg struct {
-		msg *protogo.DMSMessage
-		err error
-	}
-	msgAvail := make(chan *recvMsg, 1)
-	errc := make(chan error)
-	fCh := make(chan bool, 1)
+	//type recvMsg struct {
+	//	msg *protogo.DMSMessage
+	//	err error
+	//}
 
-	receiveMessage := func() {
+	for {
 		in, err := stream.Recv()
 		if err == io.EOF {
 			Logger.Errorf("sandbox process [%s] - recv eof", processName)
-			return
+			return err
 		}
-		msgAvail <- &recvMsg{in, err}
+		if err != nil {
+			err := fmt.Errorf("receive failed: %s", err)
+			Logger.Error(err)
+			return err
+		}
+		if in == nil {
+			err := errors.New("received nil message, ending chaincode stream")
+			Logger.Error(err)
+			return err
+		}
+		err = handler.handleMessage(in)
+		if err != nil {
+			err = fmt.Errorf("sandbox process [%s] error handling message: %s", processName, err)
+			return err
+		}
 	}
+	//msgAvail := make(chan *recvMsg, 1)
+	//errc := make(chan error)
+	//fCh := make(chan bool, 1)
 
+	//receiveMessage := func() {
+	//	in, err := stream.Recv()
+	//	if err == io.EOF {
+	//		Logger.Errorf("sandbox process [%s] - recv eof", processName)
+	//		return
+	//	}
+	//	msgAvail <- &recvMsg{in, err}
+	//}
 	// finish condition: receive completed message
-	go receiveMessage()
-	for {
-		select {
-		case rmsg := <-msgAvail:
-			switch {
-			case rmsg.err == io.EOF:
-				err := fmt.Errorf("receive end: %s", rmsg.err)
-				return err
-			case rmsg.err != nil:
-				err := fmt.Errorf("receive failed: %s", rmsg.err)
-				return err
-			case rmsg.msg == nil:
-				err := errors.New("received nil message, ending chaincode stream")
-				return err
-			default:
-				err := handler.handleMessage(rmsg.msg, fCh)
-				if err != nil {
-					err = fmt.Errorf("sandbox process [%s] error handling message: %s", processName, err)
-					return err
-				}
-			}
-
-			go receiveMessage()
-
-		case sendErr := <-errc:
-			if sendErr != nil {
-				err := fmt.Errorf("error sending: %s", sendErr)
-				Logger.Errorf("\"sandbox process [%s] - err in send [%s]", processName, err)
-				return err
-			}
-
-		case <-fCh:
-			close(msgAvail)
-			close(fCh)
-			close(errc)
-			return nil
-		}
-
-	}
+	//go receiveMessage()
+	//for {
+	//	select {
+	//	case rmsg := <-msgAvail:
+	//		switch {
+	//		case rmsg.err == io.EOF:
+	//			err := fmt.Errorf("receive end: %s", rmsg.err)
+	//			return err
+	//		case rmsg.err != nil:
+	//			err := fmt.Errorf("receive failed: %s", rmsg.err)
+	//			return err
+	//		case rmsg.msg == nil:
+	//			err := errors.New("received nil message, ending chaincode stream")
+	//			return err
+	//		default:
+	//			err := handler.handleMessage(rmsg.msg, fCh)
+	//			if err != nil {
+	//				err = fmt.Errorf("sandbox process [%s] error handling message: %s", processName, err)
+	//				return err
+	//			}
+	//		}
+	//
+	//		go receiveMessage()
+	//
+	//	case sendErr := <-errc:
+	//		if sendErr != nil {
+	//			err := fmt.Errorf("error sending: %s", sendErr)
+	//			Logger.Errorf("\"sandbox process [%s] - err in send [%s]", processName, err)
+	//			return err
+	//		}
+	//
+	//	case <-fCh:
+	//		close(msgAvail)
+	//		close(fCh)
+	//		close(errc)
+	//		return nil
+	//	}
+	//}
 }

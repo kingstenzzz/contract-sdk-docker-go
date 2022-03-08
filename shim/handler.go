@@ -86,7 +86,7 @@ func (h *Handler) SendMessage(msg *protogo.DMSMessage) error {
 }
 
 // handleMessage message handles loop for shim side of chaincode/peer stream.
-func (h *Handler) handleMessage(msg *protogo.DMSMessage, finishCh chan bool) error {
+func (h *Handler) handleMessage(msg *protogo.DMSMessage) error {
 
 	Logger.Debugf("sandbox process [%s] tx [%s] - handle message: [%v]", h.processName, msg.TxId, msg)
 	var err error
@@ -95,7 +95,7 @@ func (h *Handler) handleMessage(msg *protogo.DMSMessage, finishCh chan bool) err
 	case created:
 		err = h.handleCreated(msg)
 	case ready:
-		err = h.handleReady(msg, finishCh)
+		err = h.handleReady(msg)
 	default:
 		err = fmt.Errorf("invalid handler state: %s", h.state)
 	}
@@ -126,7 +126,7 @@ func (h *Handler) afterCreated() error {
 
 // ------------------------------------------
 
-func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) error {
+func (h *Handler) handleReady(readyMsg *protogo.DMSMessage) error {
 
 	// check new msg's TxId is equal to current TxId, if not equal, abandon this msg
 	// abandoned msg is not error
@@ -156,8 +156,8 @@ func (h *Handler) handleReady(readyMsg *protogo.DMSMessage, finishCh chan bool) 
 		return h.handleResponse(readyMsg)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_CALL_CONTRACT_RESPONSE:
 		return h.handleResponse(readyMsg)
-	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED:
-		return h.handleCompleted(finishCh)
+	//case protogo.DMSMessageType_DMS_MESSAGE_TYPE_COMPLETED:
+	//	return h.handleCompleted(finishCh)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_CREATE_KV_ITERATOR_RESPONSE:
 		return h.handleResponse(readyMsg)
 	case protogo.DMSMessageType_DMS_MESSAGE_TYPE_CONSUME_KV_ITERATOR_RESPONSE:

@@ -1,3 +1,10 @@
+/*
+Copyright (C) BABEC. All rights reserved.
+Copyright (C) THL A29 Limited, a Tencent company. All rights reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package shim
 
 import (
@@ -6,9 +13,9 @@ import (
 	"io"
 	"os"
 
-	"chainmaker.org/chainmaker-contract-sdk-docker-go/logger"
-	"chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo"
-	"chainmaker.org/chainmaker-contract-sdk-docker-go/shim/internal"
+	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/logger"
+	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo"
+	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/shim/internal"
 	"go.uber.org/zap"
 )
 
@@ -33,17 +40,20 @@ func Start(cmContract CMContract) error {
 	contractName := os.Args[2]
 	contractVersion := os.Args[3]
 
-	Logger = logger.NewDockerLogger("[Sandbox]", "INFO")
-	Logger.Debugf("loglevel: %s", os.Args[2])
+	Logger = logger.NewDockerLogger("[Sandbox]", os.Args[4])
+	Logger.Debugf("loglevel: %s", os.Args[4])
 
 	// get sandbox stream
 	stream, err := GetClientStream(sockAddress)
 	if err != nil {
+		Logger.Errorf("sandbox process [%s] fail to establish stream", processName)
 		return err
 	}
+	Logger.Debugf("sandbox process [%s] established the stream", processName)
 
 	err = startClientChat(stream, cmContract, processName, contractName, contractVersion)
 	if err != nil {
+		Logger.Errorf("sandbox process [%s] fail to chat with manager", processName)
 		return err
 	}
 	// wait to end
@@ -55,6 +65,7 @@ func startClientChat(stream ClientStream, contract CMContract, processName, cont
 	defer func(stream ClientStream) {
 		err := stream.CloseSend()
 		if err != nil {
+			Logger.Errorf("sandbox process [%s] close send err [%s]", processName)
 			return
 		}
 	}(stream)
@@ -62,7 +73,7 @@ func startClientChat(stream ClientStream, contract CMContract, processName, cont
 }
 
 func chatWithManager(stream ClientStream, userContract CMContract, processName, contractName, contractVersion string) error {
-	Logger.Debugf("sandbox - chat with manager")
+	Logger.Debugf("sandbox process [%s] - chat with manager", processName)
 
 	// Create the shim handler responsible for all control logic
 	handler := newHandler(stream, userContract, processName, contractName, contractVersion)
@@ -78,60 +89,26 @@ func chatWithManager(stream ClientStream, userContract CMContract, processName, 
 		return fmt.Errorf("error sending chaincode REGISTER: %s", err)
 	}
 
-	// holds return values from gRPC Recv below
-	type recvMsg struct {
-		msg *protogo.DMSMessage
-		err error
-	}
-	msgAvail := make(chan *recvMsg, 1)
-	errc := make(chan error)
-	fCh := make(chan bool, 1)
-
-	receiveMessage := func() {
+	for {
 		in, err := stream.Recv()
 		if err == io.EOF {
-			return
+			Logger.Errorf("sandbox process [%s] - recv eof", processName)
+			return err
 		}
-		msgAvail <- &recvMsg{in, err}
-	}
-
-	// finish condition: receive completed message
-	go receiveMessage()
-	for {
-		select {
-		case rmsg := <-msgAvail:
-			switch {
-			case rmsg.err == io.EOF:
-				err := fmt.Errorf("receive end: %s", rmsg.err)
-				return err
-			case rmsg.err != nil:
-				err := fmt.Errorf("receive failed: %s", rmsg.err)
-				return err
-			case rmsg.msg == nil:
-				err := errors.New("received nil message, ending chaincode stream")
-				return err
-			default:
-				err := handler.handleMessage(rmsg.msg, fCh)
-				if err != nil {
-					err = fmt.Errorf("error handling message: %s", err)
-					return err
-				}
-			}
-
-			go receiveMessage()
-
-		case sendErr := <-errc:
-			if sendErr != nil {
-				err := fmt.Errorf("error sending: %s", sendErr)
-				return err
-			}
-
-		case <-fCh:
-			close(msgAvail)
-			close(fCh)
-			close(errc)
-			return nil
+		if err != nil {
+			err := fmt.Errorf("receive failed: %s", err)
+			Logger.Error(err)
+			return err
 		}
-
+		if in == nil {
+			err := errors.New("received nil message, ending chaincode stream")
+			Logger.Error(err)
+			return err
+		}
+		err = handler.handleMessage(in)
+		if err != nil {
+			err = fmt.Errorf("sandbox process [%s] error handling message: %s", processName, err)
+			return err
+		}
 	}
 }

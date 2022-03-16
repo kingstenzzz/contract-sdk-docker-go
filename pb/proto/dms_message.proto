@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "chainmaker.org/chainmaker-contract-sdk-docker-go/pb/protogo";
+option go_package = "chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo";
 
 // manager as server - sandbox established a connection to the manager
 service DMSRpc {
@@ -67,6 +67,10 @@ enum DMSMessageType {
     DMS_MESSAGE_TYPE_CONSUME_KEY_HISTORY_ITER_REQUEST= 19;
 
     DMS_MESSAGE_TYPE_CONSUME_KEY_HISTORY_ITER_RESPONSE = 20;
+
+    DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_REQUEST = 21;
+
+    DMS_MESSAGE_TYPE_GET_SENDER_ADDRESS_RESPONSE = 22;
 }
 
 // --------------------  request message ---------------------

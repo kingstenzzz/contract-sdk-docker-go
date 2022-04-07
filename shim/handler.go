@@ -239,9 +239,11 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 
 	// construct complete message
 	writeMap := stub.GetWriteMap()
+	readMap := stub.GetReadMap()
 	events := stub.GetEvents()
 	contractResponse := &protogo.ContractResponse{
 		Response: &response,
+		ReadMap:  readMap,
 		WriteMap: writeMap,
 		Events:   events,
 	}

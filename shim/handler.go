@@ -248,11 +248,6 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 		Events:   events,
 	}
 
-	// current height > 0, also send read map
-	if h.currentTxHeight > 0 {
-		contractResponse.ReadMap = stub.GetReadMap()
-	}
-
 	// construct complete message
 	contractResponsePayload, err := proto.Marshal(contractResponse)
 	if err != nil {

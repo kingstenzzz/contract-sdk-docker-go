@@ -194,10 +194,12 @@ func (h *Handler) handleInit(readyMsg *protogo.DMSMessage) error {
 
 	// construct complete message
 	writeMap := stub.GetWriteMap()
+	readMap := stub.GetReadMap()
 	events := stub.GetEvents()
 	contractResponse := &protogo.ContractResponse{
 		Response: &response,
 		WriteMap: writeMap,
+		ReadMap:  readMap,
 		Events:   events,
 	}
 
@@ -237,16 +239,13 @@ func (h *Handler) handleInvoke(readyMsg *protogo.DMSMessage) error {
 
 	// construct complete message
 	writeMap := stub.GetWriteMap()
+	readMap := stub.GetReadMap()
 	events := stub.GetEvents()
 	contractResponse := &protogo.ContractResponse{
 		Response: &response,
+		ReadMap:  readMap,
 		WriteMap: writeMap,
 		Events:   events,
-	}
-
-	// current height > 0, also send read map
-	if h.currentTxHeight > 0 {
-		contractResponse.ReadMap = stub.GetReadMap()
 	}
 
 	// construct complete message

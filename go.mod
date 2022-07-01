@@ -1,4 +1,4 @@
-module ithub.com/kingstenzzz/chainmaker/contract-sdk-docker-go
+module github.com/kingstenzzz/chainmaker/contract-sdk-docker-go
 
 go 1.15
 

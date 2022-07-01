@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package shim
 
-import "chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo"
+import "github.com/kingstenzzz/contract-sdk-docker-go/pb/protogo"
 
 const (
 	// OK constant - status code less than 400, endorser will endorse it.

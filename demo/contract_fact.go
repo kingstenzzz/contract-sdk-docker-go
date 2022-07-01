@@ -12,8 +12,8 @@ import (
 	"log"
 	"strconv"
 
-	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo"
-	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/shim"
+	"github.com/kingstenzzz/contract-sdk-docker-go/pb/protogo"
+	"github.com/kingstenzzz/contract-sdk-docker-go/shim"
 )
 
 type FactContract struct {

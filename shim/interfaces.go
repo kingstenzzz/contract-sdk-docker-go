@@ -8,8 +8,8 @@ SPDX-License-Identifier: Apache-2.0
 package shim
 
 import (
-	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"chainmaker.org/chainmaker/common/v2/serialize"
+	"github.com/kingstenzzz/contract-sdk-docker-go/pb/protogo"
 )
 
 // CMContract user contract interface

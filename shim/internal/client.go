@@ -12,7 +12,7 @@ import (
 	"net"
 	"time"
 
-	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo"
+	"github.com/kingstenzzz/contract-sdk-docker-go/pb/protogo"
 	"google.golang.org/grpc"
 )
 

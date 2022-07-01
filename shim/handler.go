@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"sync"
 
-	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"github.com/golang/protobuf/proto"
+	"github.com/kingstenzzz/contract-sdk-docker-go/pb/protogo"
 )
 
 type state string

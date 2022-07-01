@@ -13,9 +13,9 @@ import (
 	"io"
 	"os"
 
-	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/logger"
-	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo"
-	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/shim/internal"
+	"github.com/kingstenzzz/contract-sdk-docker-go/logger"
+	"github.com/kingstenzzz/contract-sdk-docker-go/pb/protogo"
+	"github.com/kingstenzzz/contract-sdk-docker-go/shim/internal"
 	"go.uber.org/zap"
 )
 

@@ -15,12 +15,12 @@ import (
 	"strconv"
 	"strings"
 
-	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/logger"
-	"chainmaker.org/chainmaker/chainmaker-contract-sdk-docker-go/pb/protogo"
 	"chainmaker.org/chainmaker/common/v2/bytehelper"
 	"chainmaker.org/chainmaker/common/v2/serialize"
 	"chainmaker.org/chainmaker/protocol/v2"
 	"github.com/golang/protobuf/proto"
+	"github.com/kingstenzzz/contract-sdk-docker-go/logger"
+	"github.com/kingstenzzz/contract-sdk-docker-go/pb/protogo"
 	"go.uber.org/zap"
 )
 

@@ -1,4 +1,4 @@
-module github.com/kingstenzzz/contract-sdk-docker-go
+module kingstenzzz/contract-sdk-docker-go
 
 go 1.15
 

@@ -10,3 +10,6 @@ require (
 	go.uber.org/zap v1.18.1
 	google.golang.org/grpc v1.40.0
 )
+replace (
+	github.com/kingstenzzz/contract-sdk-docker-go latest => github.com/kingstenzzz/contract-sdk-docker-go latest
+)
